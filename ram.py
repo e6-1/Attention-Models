@@ -13,11 +13,13 @@ from utils import weight_variable, bias_variable, loglikelihood
 from config import Config
 
 from tensorflow.examples.tutorials.mnist import input_data
+import tensorflow.contrib.rnn as rnn_cell
+import tensorflow.contrib.legacy_seq2seq as seq2seq
 
 logging.getLogger().setLevel(logging.INFO)
 
-rnn_cell = tf.nn.rnn_cell
-seq2seq = tf.nn.seq2seq
+# rnn_cell = tf.nn.rnn_cell
+# seq2seq = tf.nn.seq2seq
 
 mnist = input_data.read_data_sets('MNIST_data', one_hot=False)
 
@@ -68,7 +70,7 @@ for t, output in enumerate(outputs[1:]):
   baseline_t = tf.nn.xw_plus_b(output, w_baseline, b_baseline)
   baseline_t = tf.squeeze(baseline_t)
   baselines.append(baseline_t)
-baselines = tf.pack(baselines)  # [timesteps, batch_sz]
+baselines = tf.stack(baselines)  # [timesteps, batch_sz]
 baselines = tf.transpose(baselines)  # [batch_sz, timesteps]
 
 # Take the last step only.
@@ -81,7 +83,7 @@ logits = tf.nn.xw_plus_b(output, w_logit, b_logit)
 softmax = tf.nn.softmax(logits)
 
 # cross-entropy.
-xent = tf.nn.sparse_softmax_cross_entropy_with_logits(logits, labels_ph)
+xent = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels_ph)
 xent = tf.reduce_mean(xent)
 pred_labels = tf.argmax(logits, 1)
 # 0/1 reward.
@@ -116,8 +118,11 @@ learning_rate = tf.maximum(learning_rate, config.lr_min)
 opt = tf.train.AdamOptimizer(learning_rate)
 train_op = opt.apply_gradients(zip(grads, var_list), global_step=global_step)
 
+saver = tf.train.Saver()
 with tf.Session() as sess:
-  sess.run(tf.initialize_all_variables())
+  # sess.run(tf.initialize_all_variables())
+  saver.restore(sess, "ram_model.ckpt")
+  print("Model restored.")
   for i in xrange(n_steps):
     images, labels = mnist.train.next_batch(config.batch_size)
     # duplicate M times, see Eqn (2)
@@ -169,3 +174,7 @@ with tf.Session() as sess:
           logging.info('valid accuracy = {}'.format(acc))
         else:
           logging.info('test accuracy = {}'.format(acc))
+
+  # Save model
+  save_path = saver.save(sess, "ram_model.ckpt")
+  print("Model saved in file: %s" % save_path)

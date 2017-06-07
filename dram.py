@@ -8,7 +8,7 @@ import logging
 import tensorflow as tf
 import numpy as np
 
-from glimpse import GlimpseNet, LocNet, ContextNet
+from dram_glimpse import GlimpseNet, LocNet, ContextNet
 from utils import weight_variable, bias_variable, loglikelihood
 from config import Config
 

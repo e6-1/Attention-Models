@@ -113,10 +113,11 @@ train_op = tf.train.AdamOptimizer().minimize(loss_op)
 
 saver = tf.train.Saver()
 with tf.Session() as sess:
-  # sess.run(tf.initialize_all_variables())
-  saver.restore(sess, "ram_model.ckpt")
-  print("Model restored.")
-  train_locs = np.load('train_locs.npz')['arr_0']
+  sess.run(tf.initialize_all_variables())
+  # saver.restore(sess, "ram_model.ckpt")
+  # print("Model restored.")
+  train_locs = np.load('train_distill.npz')['locs']
+  train_logits = np.load('train_distill.npz')['logits']
 
   for i in xrange(n_steps):
     images, labels, start_ind, end_ind = mnist.train.next_batch(config.batch_size)

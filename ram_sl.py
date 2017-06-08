@@ -43,6 +43,7 @@ images_ph = tf.placeholder(tf.float32,
                             config.num_channels])
 locs_ph = tf.placeholder(tf.float32, [None, 6, 2])
 labels_ph = tf.placeholder(tf.int64, [None])
+logits_ph = tf.placeholder(tf.float32, [None, config.num_classes])
 
 # Build the aux nets.
 with tf.variable_scope('glimpse_net'):
@@ -83,6 +84,9 @@ with tf.variable_scope('cls'):
 logits = tf.nn.xw_plus_b(output, w_logit, b_logit)
 softmax = tf.nn.softmax(logits)
 
+# distillation loss for logits
+logits_loss = tf.nn.l2_loss(logits - logits_ph)
+
 # cross-entropy.
 xent = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels_ph)
 xent = tf.reduce_mean(xent)
@@ -92,7 +96,7 @@ pred_labels = tf.argmax(logits, 1)
 loc_loss = tf.norm(tf.stack(loc_mean_arr, axis=1) - locs_ph)
 
 # combined loss
-loss_op = config.lamda * xent + (1 - config.lamda) * loc_loss
+distill_loss = config.lamda * logits_loss + (1 - config.lamda) * loc_loss
 
 # learning rate
 global_step = tf.get_variable(
@@ -108,7 +112,7 @@ learning_rate = tf.train.exponential_decay(
     staircase=True)
 learning_rate = tf.maximum(learning_rate, config.lr_min)
 opt = tf.train.AdamOptimizer(learning_rate)
-train_op = tf.train.AdamOptimizer().minimize(loss_op)
+train_op = tf.train.AdamOptimizer().minimize(distill_loss)
 
 
 saver = tf.train.Saver()
@@ -123,49 +127,49 @@ with tf.Session() as sess:
     images, labels, start_ind, end_ind = mnist.train.next_batch(config.batch_size)
     # duplicate M times, see Eqn (2)
     images = np.tile(images, [config.M, 1])
-    labels = np.tile(labels, [config.M])
+    logits = np.tile(train_logits[start_ind:end_ind], [config.M, 1])
     locs = np.tile(train_locs[start_ind:end_ind], [config.M, 1, 1])
     loc_net.sampling = True
     loss, _ = sess.run(
-            [loss_op, train_op],
+            [distill_loss, train_op],
             feed_dict={
                 images_ph: images,
-                labels_ph: labels,
+                logits_ph: logits,
                 locs_ph: locs
             })
 
     if i and i % 100 == 0:
       logging.info('step {}: loss = {:3.6f}'.format(i, loss))
 
-    # if i and i % training_steps_per_epoch == 0:
-    #   # Evaluation
-    #   for dataset in [mnist.validation, mnist.test]:
-    #     steps_per_epoch = dataset.num_examples // config.eval_batch_size
-    #     correct_cnt = 0
-    #     num_samples = steps_per_epoch * config.batch_size
-    #     loc_net.sampling = True
-    #     for test_step in xrange(steps_per_epoch):
-    #       images, labels = dataset.next_batch(config.batch_size)
-    #       labels_bak = labels
-    #       # Duplicate M times
-    #       images = np.tile(images, [config.M, 1])
-    #       labels = np.tile(labels, [config.M])
-    #       softmax_val = sess.run(softmax,
-    #                              feed_dict={
-    #                                  images_ph: images,
-    #                                  labels_ph: labels
-    #                              })
-    #       softmax_val = np.reshape(softmax_val,
-    #                                [config.M, -1, config.num_classes])
-    #       softmax_val = np.mean(softmax_val, 0)
-    #       pred_labels_val = np.argmax(softmax_val, 1)
-    #       pred_labels_val = pred_labels_val.flatten()
-    #       correct_cnt += np.sum(pred_labels_val == labels_bak)
-    #     acc = correct_cnt / num_samples
-    #     if dataset == mnist.validation:
-    #       logging.info('valid accuracy = {}'.format(acc))
-    #     else:
-    #       logging.info('test accuracy = {}'.format(acc))
+    if i and i % training_steps_per_epoch == 0:
+      # Evaluation
+      for dataset in [mnist.validation, mnist.test]:
+        steps_per_epoch = dataset.num_examples // config.eval_batch_size
+        correct_cnt = 0
+        num_samples = steps_per_epoch * config.batch_size
+        loc_net.sampling = True
+        for test_step in xrange(steps_per_epoch):
+          images, labels, _, _ = dataset.next_batch(config.batch_size)
+          labels_bak = labels
+          # Duplicate M times
+          images = np.tile(images, [config.M, 1])
+          labels = np.tile(labels, [config.M])
+          softmax_val = sess.run(softmax,
+                                 feed_dict={
+                                     images_ph: images,
+                                     labels_ph: labels
+                                 })
+          softmax_val = np.reshape(softmax_val,
+                                   [config.M, -1, config.num_classes])
+          softmax_val = np.mean(softmax_val, 0)
+          pred_labels_val = np.argmax(softmax_val, 1)
+          pred_labels_val = pred_labels_val.flatten()
+          correct_cnt += np.sum(pred_labels_val == labels_bak)
+        acc = correct_cnt / num_samples
+        if dataset == mnist.validation:
+          logging.info('valid accuracy = {}'.format(acc))
+        else:
+          logging.info('test accuracy = {}'.format(acc))
 
   # Save model
   save_path = saver.save(sess, "ram_model.ckpt")

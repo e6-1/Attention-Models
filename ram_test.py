@@ -45,7 +45,8 @@ images_ph = tf.placeholder(tf.float32,
 labels_ph = tf.placeholder(tf.int64, [None])
 locs_ph = tf.placeholder(tf.float32, [None, 6, 2])
 labels_ph = tf.placeholder(tf.int64, [None])
-logits_ph = tf.placeholder(tf.float32, [None, config.num_classes])
+targets_ph = tf.placeholder(tf.float32, [None, config.num_classes])
+zero_targets_ph = targets_ph - tf.reduce_mean(targets_ph)  # zero mean
 
 # Build the aux nets.
 with tf.variable_scope('glimpse_net'):
@@ -84,6 +85,7 @@ with tf.variable_scope('cls'):
   w_logit = weight_variable((config.cell_output_size, config.num_classes))
   b_logit = bias_variable((config.num_classes,))
 logits = tf.nn.xw_plus_b(output, w_logit, b_logit)
+zero_logits = logits - tf.reduce_mean(logits)  # zero mean
 softmax = tf.nn.softmax(logits)
 
 # student-teacher loss
@@ -92,7 +94,7 @@ distill_lambda = tf.Variable(0.5, name="distill_lambda")
 # distill_lambda = tf.constant(0.0001, name="distill_lambda")
 distill_scaling = tf.maximum(distill_lambda, zero)
 ndistill_scaling = tf.maximum(1 - distill_lambda, zero)
-distill_loss = distill_scaling * tf.nn.l2_loss(logits - logits_ph) / (config.batch_size * config.M) + tf.nn.l2_loss(tf.stack(loc_mean_arr, axis=1) - locs_ph) / (config.batch_size * config.M)
+distill_loss = distill_scaling * tf.scalar_mul(0.5, tf.square(zero_logits - zero_targets_ph)) + tf.nn.l2_loss(tf.stack(loc_mean_arr, axis=1) - locs_ph)
 
 # cross-entropy.
 xent = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels_ph)
@@ -159,7 +161,7 @@ with tf.Session() as sess:
                  images_ph: images,
                  labels_ph: labels,
                  locs_ph: locs,
-                 logits_ph: logs
+                 targets_ph: logs
              })
      if i and i % 1000 == 0:
        logging.info('step {}: lr = {:3.6f}'.format(i, lr_val))

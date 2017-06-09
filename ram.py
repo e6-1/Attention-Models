@@ -28,9 +28,11 @@ n_steps = config.step
 
 loc_mean_arr = []
 sampled_loc_arr = []
+rnn_output_arr = []
 
 
 def get_next_input(output, i):
+  rnn_output_arr.append(output)
   loc, loc_mean = loc_net(output)
   gl_next = gl(loc)
   loc_mean_arr.append(loc_mean)
@@ -121,69 +123,83 @@ train_op = opt.apply_gradients(zip(grads, var_list), global_step=global_step)
 # get locations
 locs_op = tf.stack(loc_mean_arr, axis=1)
 
+# get rnn outputs
+rnns_op = tf.stack(rnn_output_arr, axis=1)
+
 saver = tf.train.Saver()
 
 # Training code
-with tf.Session() as sess:
-   sess.run(tf.initialize_all_variables())
-   # saver.restore(sess, "ram_model.ckpt")
-   # print("Model restored.")
-   for i in xrange(n_steps):
-     images, labels, _, _ = mnist.train.next_batch(config.batch_size)
-     # duplicate M times, see Eqn (2)
-     images = np.tile(images, [config.M, 1])
-     labels = np.tile(labels, [config.M])
-     loc_net.samping = True
-     adv_val, baselines_mse_val, xent_val, logllratio_val, \
-         reward_val, loss_val, lr_val, _ = sess.run(
-             [advs, baselines_mse, xent, logllratio,
-              reward, loss, learning_rate, train_op],
-             feed_dict={
-                 images_ph: images,
-                 labels_ph: labels
-             })
-     if i and i % 1000 == 0:
-       logging.info('step {}: lr = {:3.6f}'.format(i, lr_val))
-       logging.info(
-           'step {}: reward = {:3.4f}\tloss = {:3.4f}\txent = {:3.4f}'.format(
-               i, reward_val, loss_val, xent_val))
-       logging.info('llratio = {:3.4f}\tbaselines_mse = {:3.4f}'.format(
-           logllratio_val, baselines_mse_val))
+accs = []
+for train_iter in range(config.num_train_iterations):
+  iter_accs = []
+  with tf.Session() as sess:
+     sess.run(tf.initialize_all_variables())
+     # saver.restore(sess, "ram_model.ckpt")
+     # print("Model restored.")
+     for i in xrange(n_steps):
+       images, labels, _, _ = mnist.train.next_batch(config.batch_size)
+       # duplicate M times, see Eqn (2)
+       images = np.tile(images, [config.M, 1])
+       labels = np.tile(labels, [config.M])
+       loc_net.samping = True
+       adv_val, baselines_mse_val, xent_val, logllratio_val, \
+           reward_val, loss_val, lr_val, _ = sess.run(
+               [advs, baselines_mse, xent, logllratio,
+                reward, loss, learning_rate, train_op],
+               feed_dict={
+                   images_ph: images,
+                   labels_ph: labels
+               })
+       if i and i % 1000 == 0:
+         logging.info('step {}: lr = {:3.6f}'.format(i, lr_val))
+         logging.info(
+             'step {}: reward = {:3.4f}\tloss = {:3.4f}\txent = {:3.4f}'.format(
+                 i, reward_val, loss_val, xent_val))
+         logging.info('llratio = {:3.4f}\tbaselines_mse = {:3.4f}'.format(
+             logllratio_val, baselines_mse_val))
 
-     if i and i % training_steps_per_epoch == 0:
-       # Evaluation
-       for dataset in [mnist.validation, mnist.test]:
-         steps_per_epoch = dataset.num_examples // config.eval_batch_size
-         correct_cnt = 0
-         num_samples = steps_per_epoch * config.batch_size
-         loc_net.sampling = True
-         for test_step in xrange(steps_per_epoch):
-           images, labels, _, _ = dataset.next_batch(config.batch_size)
-           labels_bak = labels
-           # Duplicate M times
-           images = np.tile(images, [config.M, 1])
-           labels = np.tile(labels, [config.M])
-           softmax_val = sess.run(softmax,
-                                  feed_dict={
-                                      images_ph: images,
-                                      labels_ph: labels
-                                  })
-           softmax_val = np.reshape(softmax_val,
-                                    [config.M, -1, config.num_classes])
-           softmax_val = np.mean(softmax_val, 0)
-           pred_labels_val = np.argmax(softmax_val, 1)
-           pred_labels_val = pred_labels_val.flatten()
-           correct_cnt += np.sum(pred_labels_val == labels_bak)
-         acc = correct_cnt / num_samples
-         if dataset == mnist.validation:
-           logging.info('valid accuracy = {}'.format(acc))
-         else:
-           logging.info('test accuracy = {}'.format(acc))
+       if i and i % training_steps_per_epoch == 0:
+         # Evaluation
+         for dataset in [mnist.validation, mnist.test]:
+           steps_per_epoch = dataset.num_examples // config.eval_batch_size
+           correct_cnt = 0
+           num_samples = steps_per_epoch * config.batch_size
+           loc_net.sampling = True
+           for test_step in xrange(steps_per_epoch):
+             images, labels, _, _ = dataset.next_batch(config.batch_size)
+             labels_bak = labels
+             # Duplicate M times
+             images = np.tile(images, [config.M, 1])
+             labels = np.tile(labels, [config.M])
+             softmax_val = sess.run(softmax,
+                                    feed_dict={
+                                        images_ph: images,
+                                        labels_ph: labels
+                                    })
+             softmax_val = np.reshape(softmax_val,
+                                      [config.M, -1, config.num_classes])
+             softmax_val = np.mean(softmax_val, 0)
+             pred_labels_val = np.argmax(softmax_val, 1)
+             pred_labels_val = pred_labels_val.flatten()
+             correct_cnt += np.sum(pred_labels_val == labels_bak)
+           acc = correct_cnt / num_samples
+           if dataset == mnist.validation:
+             logging.info('valid accuracy = {}'.format(acc))
+           else:
+             logging.info('test accuracy = {}'.format(acc))
+             accs.append(acc)
 
-   # Save model
-   save_path = saver.save(sess, "ram_model.ckpt")
-   print("Model saved in file: %s" % save_path)
+     # Save model
+     save_path = saver.save(sess, "ram_model.ckpt")
+     print("Model saved in file: %s" % save_path)
 
+# Save accuracy means/stds to CSV
+acc_means = [np.mean(np.ndarray(acc)) for acc in accs]
+acc_stds = [np.std(np.ndarray(acc)) for acc in accs]
+results = np.ndarray((len(accs), 2))
+results[:, 0] = acc_means
+results[:, 1] = acc_stds
+np.savetxt('train_acc_results.csv', results)
 
 # Saving locations
 with tf.Session() as sess:
@@ -193,13 +209,13 @@ with tf.Session() as sess:
 
   # Save training locations
   images, labels = mnist.train.images, mnist.train.labels
-  logit_s, train_locs = sess.run(
-          [logits, locs_op],
+  logit_s, train_locs, rnn_out = sess.run(
+          [logits, locs_op, rnns_op],
           feed_dict={
               images_ph: images,
               labels_ph: labels
           })
-  np.savez_compressed("train_distill", locs=train_locs, logits=logit_s)
+  np.savez_compressed("train_distill", locs=train_locs, logits=logit_s, rnn_output=rnn_out)
   print("Saved training....")
 
   # Save testing locations

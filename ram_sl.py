@@ -85,18 +85,18 @@ logits = tf.nn.xw_plus_b(output, w_logit, b_logit)
 softmax = tf.nn.softmax(logits)
 
 # distillation loss for logits
-logits_loss = tf.nn.l2_loss(logits - logits_ph)
+logits_loss = tf.nn.l2_loss(logits - logits_ph) / (config.batch_size * config.M)
 
 # cross-entropy.
 xent = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels_ph)
-xent = tf.reduce_mean(xent)
+xent = tf.reduce_mean(xent) / (config.batch_size * config.M)
 pred_labels = tf.argmax(logits, 1)
 
 # mse
 loc_loss = tf.norm(tf.stack(loc_mean_arr, axis=1) - locs_ph)
 
 # combined loss
-distill_loss = config.lamda * logits_loss + (1 - config.lamda) * loc_loss
+distill_loss = config.lamda * xent + (1 - config.lamda) * logits_loss + loc_loss
 
 # learning rate
 global_step = tf.get_variable(
@@ -114,7 +114,7 @@ learning_rate = tf.maximum(learning_rate, config.lr_min)
 opt = tf.train.AdamOptimizer(learning_rate)
 train_op = tf.train.AdamOptimizer().minimize(distill_loss)
 
-
+mnist_train = mnist.train
 saver = tf.train.Saver()
 with tf.Session() as sess:
   sess.run(tf.initialize_all_variables())
@@ -122,25 +122,29 @@ with tf.Session() as sess:
   # print("Model restored.")
   train_locs = np.load('train_distill.npz')['locs']
   train_logits = np.load('train_distill.npz')['logits']
-
+  mnist_train.locs = train_locs
+  mnist_train.logits = train_logits
   for i in xrange(n_steps):
-    images, labels, start_ind, end_ind = mnist.train.next_batch(config.batch_size)
+    batch_inds = np.random.randint(0, high=54999, size=config.batch_size)
+    # images, labels, locs, logits = mnist_train.next_batch(config.batch_size)
+    images, labels, locs, logits = mnist_train.images[batch_inds], mnist_train.labels[batch_inds], train_locs[batch_inds], train_logits[batch_inds]
     # duplicate M times, see Eqn (2)
     images = np.tile(images, [config.M, 1])
-    logits = np.tile(train_logits[start_ind:end_ind], [config.M, 1])
-    locs = np.tile(train_locs[start_ind:end_ind], [config.M, 1, 1])
+    labels = np.tile(labels, [config.M])
+    locs = np.tile(locs, [config.M, 1, 1])
+    logits = np.tile(logits, [config.M, 1])
     loc_net.sampling = True
-    loss, _ = sess.run(
-            [distill_loss, train_op],
+    loss, location_loss, logit_loss, softmax_loss, _ = sess.run(
+            [distill_loss, loc_loss, logits_loss, xent, train_op],
             feed_dict={
                 images_ph: images,
+                labels_ph: labels,
                 logits_ph: logits,
                 locs_ph: locs
             })
 
-    if i and i % 100 == 0:
-      logging.info('step {}: loss = {:3.6f}'.format(i, loss))
-
+    if i and i % 1000 == 0:
+      logging.info('step {}: loss = {:3.6f}, loc_loss = {:3.6f}, logits_loss = {:3.6f}, softmax_loss = {:3.6f}'.format(i, loss, location_loss, logit_loss, softmax_loss))
     if i and i % training_steps_per_epoch == 0:
       # Evaluation
       for dataset in [mnist.validation, mnist.test]:
@@ -172,5 +176,5 @@ with tf.Session() as sess:
           logging.info('test accuracy = {}'.format(acc))
 
   # Save model
-  save_path = saver.save(sess, "ram_model.ckpt")
-  print("Model saved in file: %s" % save_path)
+  # save_path = saver.save(sess, "ram_model.ckpt")
+  # print("Model saved in file: %s" % save_path)

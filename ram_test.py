@@ -164,6 +164,7 @@ with tf.Session() as sess:
                  targets_ph: logs
              })
      if i and i % 1000 == 0:
+       print(type(i), type(reward_val), type(loss_val), type(xent_val))
        logging.info('step {}: lr = {:3.6f}'.format(i, lr_val))
        logging.info(
            'step {}: reward = {:3.4f}\tloss = {:3.4f}\txent = {:3.4f}'.format(

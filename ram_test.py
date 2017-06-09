@@ -87,7 +87,12 @@ logits = tf.nn.xw_plus_b(output, w_logit, b_logit)
 softmax = tf.nn.softmax(logits)
 
 # student-teacher loss
-distill_loss = tf.nn.l2_loss(logits - logits_ph) + tf.nn.l2_loss(tf.stack(loc_mean_arr, axis=1) - locs_ph)
+zero = tf.constant(0.0)
+distill_lambda = tf.Variable(0.5, name="distill_lambda")
+# distill_lambda = tf.constant(0.0001, name="distill_lambda")
+distill_scaling = tf.maximum(distill_lambda, zero)
+ndistill_scaling = tf.maximum(1 - distill_lambda, zero)
+distill_loss = distill_scaling * tf.nn.l2_loss(logits - logits_ph) / (config.batch_size * config.M) + tf.nn.l2_loss(tf.stack(loc_mean_arr, axis=1) - locs_ph) / (config.batch_size * config.M)
 
 # cross-entropy.
 xent = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels_ph)
@@ -105,7 +110,7 @@ reward = tf.reduce_mean(reward)
 baselines_mse = tf.reduce_mean(tf.square((rewards - baselines)))
 var_list = tf.trainable_variables()
 # hybrid loss
-loss = -logllratio + xent + baselines_mse + distill_loss  # `-` for minimize
+loss = -logllratio + ndistill_scaling * xent + baselines_mse + distill_loss  # `-` for minimize
 grads = tf.gradients(loss, var_list)
 grads, _ = tf.clip_by_global_norm(grads, config.max_grad_norm)
 
@@ -163,7 +168,7 @@ with tf.Session() as sess:
                i, reward_val, loss_val, xent_val))
        logging.info('llratio = {:3.4f}\tbaselines_mse = {:3.4f}'.format(
            logllratio_val, baselines_mse_val))
-
+       logging.info('distill_lambda = {:3.4f}'.format(sess.run(distill_lambda)))
      if i and i % training_steps_per_epoch == 0:
        # Evaluation
        for dataset in [mnist.validation, mnist.test]:

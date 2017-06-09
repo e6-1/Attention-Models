@@ -189,9 +189,9 @@ for train_iter in range(config.num_train_iterations):
              logging.info('test accuracy = {}'.format(acc))
              accs.append(acc)
 
-     # Save model
-     save_path = saver.save(sess, "ram_model.ckpt")
-     print("Model saved in file: %s" % save_path)
+     # # Save model
+     # save_path = saver.save(sess, "ram_model.ckpt")
+     # print("Model saved in file: %s" % save_path)
 
 # Save accuracy means/stds to CSV
 acc_means = [np.mean(np.ndarray(acc)) for acc in accs]
@@ -201,41 +201,41 @@ results[:, 0] = acc_means
 results[:, 1] = acc_stds
 np.savetxt('train_acc_results.csv', results)
 
-# Saving locations
-with tf.Session() as sess:
+# # Saving locations
+# with tf.Session() as sess:
 
-  saver.restore(sess, "ram_model.ckpt")
-  print("Model restored.")
+#   saver.restore(sess, "ram_model.ckpt")
+#   print("Model restored.")
 
-  # Save training locations
-  images, labels = mnist.train.images, mnist.train.labels
-  logit_s, train_locs, rnn_out = sess.run(
-          [logits, locs_op, rnns_op],
-          feed_dict={
-              images_ph: images,
-              labels_ph: labels
-          })
-  np.savez_compressed("train_distill", locs=train_locs, logits=logit_s, rnn_output=rnn_out)
-  print("Saved training....")
+#   # Save training locations
+#   images, labels = mnist.train.images, mnist.train.labels
+#   logit_s, train_locs, rnn_out = sess.run(
+#           [logits, locs_op, rnns_op],
+#           feed_dict={
+#               images_ph: images,
+#               labels_ph: labels
+#           })
+#   np.savez_compressed("train_distill", locs=train_locs, logits=logit_s, rnn_output=rnn_out)
+#   print("Saved training....")
 
-  # Save testing locations
-  images, labels = mnist.test.images, mnist.test.labels
-  _, test_locs = sess.run(
-          [softmax, locs_op],
-          feed_dict={
-              images_ph: images,
-              labels_ph: labels
-          })
-  np.savez_compressed("test_locs", test_locs)
-  print("Saved testing....")
+#   # Save testing locations
+#   images, labels = mnist.test.images, mnist.test.labels
+#   _, test_locs = sess.run(
+#           [softmax, locs_op],
+#           feed_dict={
+#               images_ph: images,
+#               labels_ph: labels
+#           })
+#   np.savez_compressed("test_locs", test_locs)
+#   print("Saved testing....")
 
-  # Save validation locations
-  images, labels = mnist.validation.images, mnist.validation.labels
-  _, valid_locs = sess.run(
-          [softmax, locs_op],
-          feed_dict={
-              images_ph: images,
-              labels_ph: labels
-          })
-  np.savez_compressed("validation_locs", valid_locs)
-  print("Saved validation....")
+#   # Save validation locations
+#   images, labels = mnist.validation.images, mnist.validation.labels
+#   _, valid_locs = sess.run(
+#           [softmax, locs_op],
+#           feed_dict={
+#               images_ph: images,
+#               labels_ph: labels
+#           })
+#   np.savez_compressed("validation_locs", valid_locs)
+#   print("Saved validation....")

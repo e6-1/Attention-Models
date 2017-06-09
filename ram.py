@@ -9,7 +9,7 @@ import tensorflow as tf
 import numpy as np
 
 from glimpse import GlimpseNet, LocNet
-from utils import weight_variable, bias_variable, loglikelihood
+from utils import weight_variable, bias_variable, loglikelihood, softmax_with_temp
 from config import Config
 
 from tensorflow.examples.tutorials.mnist import input_data
@@ -82,7 +82,7 @@ with tf.variable_scope('cls'):
   w_logit = weight_variable((config.cell_output_size, config.num_classes))
   b_logit = bias_variable((config.num_classes,))
 logits = tf.nn.xw_plus_b(output, w_logit, b_logit)
-softmax = tf.nn.softmax(logits)
+softmax = softmax_with_temp(logits)
 
 # cross-entropy.
 xent = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels_ph)
@@ -187,16 +187,16 @@ for train_iter in range(config.num_train_iterations):
              logging.info('valid accuracy = {}'.format(acc))
            else:
              logging.info('test accuracy = {}'.format(acc))
-             accs.append(acc)
-
+             iter_accs.append(acc)
+     accs.append(iter_accs)
      # # Save model
      # save_path = saver.save(sess, "ram_model.ckpt")
      # print("Model saved in file: %s" % save_path)
 
 # Save accuracy means/stds to CSV
-acc_means = [np.mean(np.ndarray(acc)) for acc in accs]
-acc_stds = [np.std(np.ndarray(acc)) for acc in accs]
-results = np.ndarray((len(accs), 2))
+acc_means = [np.mean(np.array(acc)) for acc in accs]
+acc_stds = [np.std(np.array(acc)) for acc in accs]
+results = np.ndarry((len(accs), 2))
 results[:, 0] = acc_means
 results[:, 1] = acc_stds
 np.savetxt('train_acc_results.csv', results)

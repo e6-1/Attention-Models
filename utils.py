@@ -32,3 +32,9 @@ def loglikelihood(mean_arr, sampled_arr, sigma):
   logll = tf.reduce_sum(logll, 2)
   logll = tf.transpose(logll)  # [batch_sz, timesteps]
   return logll
+
+
+def softmax_with_temp(logits, T=1):
+  numerator = tf.exp(logits / T)
+  denomenator = tf.reduce_sum(tf.exp(logits / T))
+  return numerator / denomenator

@@ -134,12 +134,18 @@ with tf.Session() as sess:
    sess.run(tf.initialize_all_variables())
    # saver.restore(sess, "ram_model.ckpt")
    # print("Model restored.")
+   train_locs = np.load('train_distill.npz')['locs']
+   train_logits = np.load('train_distill.npz')['logits']
+   mnist_train.locs = train_locs
+   mnist_train.logits = train_logits
    for i in xrange(n_steps):
-     images, labels, _, _ = mnist.train.next_batch(config.batch_size)
+     images, labels, locs, logits = mnist_train.next_batch(config.batch_size)
      # duplicate M times, see Eqn (2)
      images = np.tile(images, [config.M, 1])
      labels = np.tile(labels, [config.M])
-     loc_net.samping = True
+     locs = np.tile(locs, [config.M, 1, 1])
+     logits = np.tile(logits, [config.M, 1])
+     loc_net.sampling = True
      adv_val, baselines_mse_val, xent_val, logllratio_val, \
          reward_val, loss_val, lr_val, _ = sess.run(
              [advs, baselines_mse, xent, logllratio,

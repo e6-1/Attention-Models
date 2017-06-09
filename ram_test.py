@@ -94,7 +94,7 @@ distill_lambda = tf.Variable(0.5, name="distill_lambda")
 # distill_lambda = tf.constant(0.0001, name="distill_lambda")
 distill_scaling = tf.maximum(distill_lambda, zero)
 ndistill_scaling = tf.maximum(1 - distill_lambda, zero)
-distill_loss = distill_scaling * tf.scalar_mul(0.5, tf.square(zero_logits - zero_targets_ph)) + tf.nn.l2_loss(tf.stack(loc_mean_arr, axis=1) - locs_ph)
+distill_loss = distill_scaling * tf.reduce_sum(tf.scalar_mul(0.5, tf.square(zero_logits - zero_targets_ph))) + tf.nn.l2_loss(tf.stack(loc_mean_arr, axis=1) - locs_ph)
 
 # cross-entropy.
 xent = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels_ph)
@@ -163,8 +163,7 @@ with tf.Session() as sess:
                  locs_ph: locs,
                  targets_ph: logs
              })
-     if i and i % 1000 == 0:
-       print(type(i), type(reward_val), type(loss_val), type(xent_val))
+     if i and i % 100 == 0:
        logging.info('step {}: lr = {:3.6f}'.format(i, lr_val))
        logging.info(
            'step {}: reward = {:3.4f}\tloss = {:3.4f}\txent = {:3.4f}'.format(

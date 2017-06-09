@@ -22,6 +22,7 @@ logging.getLogger().setLevel(logging.INFO)
 # seq2seq = tf.nn.seq2seq
 
 mnist = input_data.read_data_sets('MNIST_data', one_hot=False)
+mnist_train = mnist.train
 
 config = Config()
 n_steps = config.step
@@ -139,20 +140,21 @@ with tf.Session() as sess:
    mnist_train.locs = train_locs
    mnist_train.logits = train_logits
    for i in xrange(n_steps):
-     images, labels, locs, logits = mnist_train.next_batch(config.batch_size)
+     images, labels, locs, logs = mnist_train.next_batch(config.batch_size)
      # duplicate M times, see Eqn (2)
      images = np.tile(images, [config.M, 1])
      labels = np.tile(labels, [config.M])
      locs = np.tile(locs, [config.M, 1, 1])
-     logits = np.tile(logits, [config.M, 1])
-     loc_net.sampling = True
+     logs = np.tile(logs, [config.M, 1])
      adv_val, baselines_mse_val, xent_val, logllratio_val, \
          reward_val, loss_val, lr_val, _ = sess.run(
              [advs, baselines_mse, xent, logllratio,
               reward, loss, learning_rate, train_op],
              feed_dict={
                  images_ph: images,
-                 labels_ph: labels
+                 labels_ph: labels,
+                 locs_ph: locs,
+                 logits_ph: logs
              })
      if i and i % 1000 == 0:
        logging.info('step {}: lr = {:3.6f}'.format(i, lr_val))
@@ -196,42 +198,3 @@ with tf.Session() as sess:
    save_path = saver.save(sess, "ram_model.ckpt")
    print("Model saved in file: %s" % save_path)
 
-
-# Saving locations
-with tf.Session() as sess:
-
-  saver.restore(sess, "ram_model.ckpt")
-  print("Model restored.")
-
-  # Save training locations
-  images, labels = mnist.train.images, mnist.train.labels
-  logit_s, train_locs = sess.run(
-          [logits, locs_op],
-          feed_dict={
-              images_ph: images,
-              labels_ph: labels
-          })
-  np.savez_compressed("train_distill", locs=train_locs, logits=logit_s)
-  print("Saved training....")
-
-  # Save testing locations
-  images, labels = mnist.test.images, mnist.test.labels
-  _, test_locs = sess.run(
-          [softmax, locs_op],
-          feed_dict={
-              images_ph: images,
-              labels_ph: labels
-          })
-  np.savez_compressed("test_locs", test_locs)
-  print("Saved testing....")
-
-  # Save validation locations
-  images, labels = mnist.validation.images, mnist.validation.labels
-  _, valid_locs = sess.run(
-          [softmax, locs_op],
-          feed_dict={
-              images_ph: images,
-              labels_ph: labels
-          })
-  np.savez_compressed("validation_locs", valid_locs)
-  print("Saved validation....")

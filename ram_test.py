@@ -30,10 +30,12 @@ n_steps = config.step
 loc_mean_arr = []
 sampled_loc_arr = []
 
+TEMPERATURE = 20
 
 def get_next_input(output, i):
   loc, loc_mean = loc_net(output)
-  gl_next = gl(loc)
+  loc = tf.where(is_distilling, locs_list[i - 1], loc)
+  gl_next = gl(loc)  # model's location
   loc_mean_arr.append(loc_mean)
   sampled_loc_arr.append(loc)
   return gl_next
@@ -46,7 +48,11 @@ labels_ph = tf.placeholder(tf.int64, [None])
 locs_ph = tf.placeholder(tf.float32, [None, 6, 2])
 labels_ph = tf.placeholder(tf.int64, [None])
 targets_ph = tf.placeholder(tf.float32, [None, config.num_classes])
+is_distilling = tf.placeholder(tf.bool)
+targets_w_temp = tf.div(targets_ph, TEMPERATURE)
 zero_targets_ph = targets_ph - tf.reduce_mean(targets_ph)  # zero mean
+locs_list = tf.split(value=locs_ph, num_or_size_splits=6, axis=1)
+locs_list = [tf.squeeze(l) for l in locs_list]
 
 # Build the aux nets.
 with tf.variable_scope('glimpse_net'):
@@ -85,16 +91,20 @@ with tf.variable_scope('cls'):
   w_logit = weight_variable((config.cell_output_size, config.num_classes))
   b_logit = bias_variable((config.num_classes,))
 logits = tf.nn.xw_plus_b(output, w_logit, b_logit)
+logits_w_temp = tf.div(logits, TEMPERATURE)
 zero_logits = logits - tf.reduce_mean(logits)  # zero mean
 softmax = tf.nn.softmax(logits)
 
 # student-teacher loss
 zero = tf.constant(0.0)
-distill_lambda = tf.Variable(0.5, name="distill_lambda")
-# distill_lambda = tf.constant(0.0001, name="distill_lambda")
+# distill_lambda = tf.Variable(0.5, name="distill_lambda")
+distill_lambda = tf.constant(0.5, name="distill_lambda")
 distill_scaling = tf.maximum(distill_lambda, zero)
 ndistill_scaling = tf.maximum(1 - distill_lambda, zero)
-distill_loss = distill_scaling * tf.reduce_sum(tf.scalar_mul(0.5, tf.square(zero_logits - zero_targets_ph))) + tf.nn.l2_loss(tf.stack(loc_mean_arr, axis=1) - locs_ph)
+distill_logits = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits_w_temp, labels=targets_w_temp))
+distill_locs = tf.nn.l2_loss(tf.stack(loc_mean_arr, axis=1) - locs_ph)
+distill_loss = distill_scaling * distill_logits + distill_locs
+# distill_loss = distill_scaling * tf.reduce_sum(tf.scalar_mul(0.5, tf.square(zero_logits - zero_targets_ph))) + tf.nn.l2_loss(tf.stack(loc_mean_arr, axis=1) - locs_ph)
 
 # cross-entropy.
 xent = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels_ph)
@@ -146,6 +156,8 @@ with tf.Session() as sess:
    train_logits = np.load('train_distill.npz')['logits']
    mnist_train.locs = train_locs
    mnist_train.logits = train_logits
+   dummy_locs = np.zeros((config.batch_size * config.M, 6, 2))
+   dummy_logs = np.zeros((config.batch_size * config.M, config.num_classes))
    for i in xrange(n_steps):
      images, labels, locs, logs = mnist_train.next_batch(config.batch_size)
      # duplicate M times, see Eqn (2)
@@ -154,16 +166,17 @@ with tf.Session() as sess:
      locs = np.tile(locs, [config.M, 1, 1])
      logs = np.tile(logs, [config.M, 1])
      adv_val, baselines_mse_val, xent_val, logllratio_val, \
-         reward_val, loss_val, lr_val, _ = sess.run(
+         reward_val, loss_val, lr_val, d, _ = sess.run(
              [advs, baselines_mse, xent, logllratio,
-              reward, loss, learning_rate, train_op],
+              reward, loss, learning_rate, distill_logits, train_op],
              feed_dict={
                  images_ph: images,
                  labels_ph: labels,
                  locs_ph: locs,
-                 targets_ph: logs
+                 targets_ph: logs,
+                 is_distilling: True
              })
-     if i and i % 100 == 0:
+     if i and i % 1000 == 0:
        logging.info('step {}: lr = {:3.6f}'.format(i, lr_val))
        logging.info(
            'step {}: reward = {:3.4f}\tloss = {:3.4f}\txent = {:3.4f}'.format(
@@ -187,7 +200,10 @@ with tf.Session() as sess:
            softmax_val = sess.run(softmax,
                                   feed_dict={
                                       images_ph: images,
-                                      labels_ph: labels
+                                      labels_ph: labels,
+                                      locs_ph: dummy_locs,
+                                      targets_ph: dummy_logs,
+                                      is_distilling: False
                                   })
            softmax_val = np.reshape(softmax_val,
                                     [config.M, -1, config.num_classes])

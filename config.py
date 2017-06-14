@@ -19,7 +19,7 @@ class Config(object):
   num_classes = 10
   max_grad_norm = 5.
 
-  step = 10000
+  step = 40000
   lr_start = 1e-3
   lr_min = 1e-4
 
@@ -30,4 +30,4 @@ class Config(object):
   lamda = 0.5
 
   # number of times to train
-  num_train_iterations = 5
+  num_train_iterations = 30

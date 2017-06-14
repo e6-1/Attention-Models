@@ -98,7 +98,7 @@ softmax = tf.nn.softmax(logits)
 # student-teacher loss
 zero = tf.constant(0.0)
 # distill_lambda = tf.Variable(0.5, name="distill_lambda")
-distill_lambda = tf.constant(0.5, name="distill_lambda")
+distill_lambda = tf.constant(0.75, name="distill_lambda")
 distill_scaling = tf.maximum(distill_lambda, zero)
 ndistill_scaling = tf.maximum(1 - distill_lambda, zero)
 distill_logits = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits_w_temp, labels=targets_w_temp))
@@ -218,6 +218,6 @@ with tf.Session() as sess:
            logging.info('test accuracy = {}'.format(acc))
 
    # Save model
-   save_path = saver.save(sess, "ram_model.ckpt")
-   print("Model saved in file: %s" % save_path)
+   # save_path = saver.save(sess, "ram_model.ckpt")
+   # print("Model saved in file: %s" % save_path)
 

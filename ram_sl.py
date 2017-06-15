@@ -29,7 +29,7 @@ n_steps = config.step
 loc_mean_arr = []
 sampled_loc_arr = []
 
-TEMPERATURE = 20
+TEMPERATURE = 10
 
 def get_next_input(output, i):
   loc, loc_mean = loc_net(output)

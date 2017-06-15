@@ -26,7 +26,7 @@ mnist = input_data.read_data_sets('MNIST_data', one_hot=False)
 config = Config()
 n_steps = config.step
 
-TEMPERATURE = 20
+TEMPERATURE = 100
 
 def get_next_input(output, i):
   loc = locs_list[i - 1]
@@ -71,6 +71,7 @@ with tf.variable_scope('cls'):
   b_logit = bias_variable((config.num_classes,))
 logits = tf.nn.xw_plus_b(output, w_logit, b_logit)
 logits_w_temp = tf.div(logits, TEMPERATURE)
+logits_w_temp = tf.Print(logits_w_temp, [logits_w_temp, targets_ph])
 softmax = tf.nn.softmax(logits)
 
 # student-teacher loss
@@ -79,7 +80,7 @@ zero = tf.constant(0.0)
 distill_lambda = tf.constant(0.75, name="distill_lambda")
 distill_scaling = tf.maximum(distill_lambda, zero)
 ndistill_scaling = tf.maximum(1 - distill_lambda, zero)
-distill_logits = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits_w_temp, labels=targets_w_temp))
+distill_logits = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits_w_temp, labels=targets_ph))
 distill_loss = distill_scaling * distill_logits
 # distill_loss = distill_scaling * tf.reduce_sum(tf.scalar_mul(0.5, tf.square(zero_logits - zero_targets_ph))) + tf.nn.l2_loss(tf.stack(loc_mean_arr, axis=1) - locs_ph)
 
@@ -126,9 +127,8 @@ with tf.Session() as sess:
     labels = np.tile(labels, [config.M])
     locs = np.tile(locs, [config.M, 1, 1])
     logits = np.tile(logits, [config.M, 1])
-    loc_net.sampling = True
-    loss, location_loss, logit_loss, softmax_loss, _ = sess.run(
-            [distill_loss, distill_locs, distill_logits, xent, train_op],
+    loss, logit_loss, softmax_loss, _ = sess.run(
+            [distill_loss, distill_logits, xent, train_op],
             feed_dict={
                 images_ph: images,
                 labels_ph: labels,
@@ -138,7 +138,7 @@ with tf.Session() as sess:
             })
 
     if i and i % 1000 == 0:
-      logging.info('step {}: loss = {:3.6f}, loc_loss = {:3.6f}, logits_loss = {:3.6f}, softmax_loss = {:3.6f}'.format(i, loss, location_loss, logit_loss, softmax_loss))
+      logging.info('step {}: loss = {:3.6f}, logits_loss = {:3.6f}, softmax_loss = {:3.6f}'.format(i, loss, logit_loss, softmax_loss))
     # if i and i % training_steps_per_epoch == 0:
     #   # Evaluation
     #   for dataset in [mnist.validation, mnist.test]:

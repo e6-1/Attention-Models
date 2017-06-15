@@ -196,27 +196,28 @@ for train_iter in range(config.num_train_iterations):
 # Save accuracy means/stds to CSV
 acc_means = [np.mean(np.array(acc)) for acc in accs]
 acc_stds = [np.std(np.array(acc)) for acc in accs]
-results = np.ndarry((len(accs), 2))
+results = np.ndarray((len(accs), 2))
 results[:, 0] = acc_means
 results[:, 1] = acc_stds
 np.savetxt('train_acc_results.csv', results)
 
-# # Saving locations
-# with tf.Session() as sess:
+# Saving locations 
+with tf.Session() as sess:
 
-#   saver.restore(sess, "ram_model.ckpt")
-#   print("Model restored.")
+  saver.restore(sess, "ram_model.ckpt")
+  print("Model restored.")
 
-#   # Save training locations
-#   images, labels = mnist.train.images, mnist.train.labels
-#   logit_s, train_locs, rnn_out = sess.run(
-#           [logits, locs_op, rnns_op],
-#           feed_dict={
-#               images_ph: images,
-#               labels_ph: labels
-#           })
-#   np.savez_compressed("train_distill", locs=train_locs, logits=logit_s, rnn_output=rnn_out)
-#   print("Saved training....")
+  # Save training locations
+  images, labels = mnist.train.images, mnist.train.labels
+  loc_net.sampling = False
+  logit_s, train_locs, rnn_out = sess.run(
+          [logits, locs_op, rnns_op],
+          feed_dict={
+              images_ph: images,
+              labels_ph: labels
+          })
+  np.savez_compressed("train_distill", locs=train_locs, logits=logit_s, rnn_output=rnn_out)
+  print("Saved training....")
 
 #   # Save testing locations
 #   images, labels = mnist.test.images, mnist.test.labels

@@ -3,6 +3,9 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+import matplotlib.patches as patches
 
 distributions = tf.contrib.distributions
 
@@ -38,3 +41,29 @@ def softmax_with_temp(logits, T=1):
   numerator = tf.exp(logits / T)
   denomenator = tf.reduce_sum(tf.exp(logits / T))
   return numerator / denomenator
+
+def draw_ram(image_num, mnist_train, num_glimpses, orig_size, win_size):
+    im = mnist_train.images[image_num].reshape((orig_size, orig_size))
+    # Create figure and axes
+    fig, ax = plt.subplots(1)
+    patch = patches.Rectangle((0, 0), 0, 0, linewidth=1, edgecolor='r', facecolor='none')
+
+    # initialization function: plot the background of each frame
+    def init():
+        ax.imshow(im)
+        ax.add_patch(patch)
+        return [patch]
+
+    # animation function.  This is called sequentially
+    def animate(i):
+        coords = transform_coords(mnist_train.locs[image_num][i], conf.original_size, conf.original_size)
+        patch.set_width(win_size)
+        patch.set_height(win_size)
+        patch.set_xy(coords)
+        return [patch]
+
+    # call the animator.  blit=True means only re-draw the parts that have changed.
+    anim = animation.FuncAnimation(fig, animate, init_func=init,
+                                   frames=num_glimpses, blit=True)
+
+    anim.save('ram.mp4', fps=num_glimpses, extra_args=['-vcodec', 'libx264'])

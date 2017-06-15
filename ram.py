@@ -127,7 +127,7 @@ locs_op = tf.stack(loc_mean_arr, axis=1)
 rnns_op = tf.stack(rnn_output_arr, axis=1)
 
 saver = tf.train.Saver()
-
+"""
 # Training code
 accs = []
 for train_iter in range(config.num_train_iterations):
@@ -200,7 +200,7 @@ results = np.ndarray((len(accs), 2))
 results[:, 0] = acc_means
 results[:, 1] = acc_stds
 np.savetxt('train_acc_results.csv', results)
-
+"""
 # Saving locations 
 with tf.Session() as sess:
 
@@ -216,6 +216,7 @@ with tf.Session() as sess:
               images_ph: images,
               labels_ph: labels
           })
+  print(train_locs.max())
   np.savez_compressed("train_distill", locs=train_locs, logits=logit_s, rnn_output=rnn_out)
   print("Saved training....")
 

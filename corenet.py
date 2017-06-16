@@ -26,7 +26,7 @@ mnist = input_data.read_data_sets('MNIST_data', one_hot=False)
 config = Config()
 n_steps = config.step
 
-TEMPERATURE = 20
+TEMPERATURE = 10000
 
 def get_next_input(output, i):
   gl_next = gl(locs_list[i - 1])
@@ -78,8 +78,8 @@ distill_xent = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=log
 xent = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels_ph)
 xent = tf.reduce_mean(xent) / (config.batch_size * config.M)
 pred_labels = tf.argmax(logits, 1)
-
-total_loss = 0.75 * distill_xent + 0.25 * xent
+acc = tf.reduce_mean(tf.cast(tf.equal(pred_labels, labels_ph), tf.float32))
+total_loss = 0.1 * distill_xent + 0.9 * xent
 
 # learning rate
 global_step = tf.get_variable(
@@ -113,8 +113,8 @@ with tf.Session() as sess:
   for i in xrange(n_steps):
     batch_inds = np.random.randint(0, high=54999, size=config.batch_size)
     images, labels, locs, logits = mnist_train.next_batch(config.batch_size)
-    loss, logit_loss, softmax_loss, _ = sess.run(
-            [total_loss, distill_xent, xent, train_op],
+    loss, logit_loss, softmax_loss, train_acc, _ = sess.run(
+            [total_loss, distill_xent, xent, acc, train_op],
             feed_dict={
                 images_ph: images,
                 labels_ph: labels,
@@ -123,7 +123,7 @@ with tf.Session() as sess:
             })
 
     if i and i % 1000 == 0:
-      logging.info('step {}: loss = {:3.6f}, logits_loss = {:3.6f}, softmax_loss = {:3.6f}'.format(i, loss, logit_loss, softmax_loss))
+      logging.info('step {}: loss = {:3.6f}, logits_loss = {:3.6f}, softmax_loss = {:3.6f}, accuracy = {:3.6f}'.format(i, loss, logit_loss, softmax_loss, train_acc))
     # if i and i % training_steps_per_epoch == 0:
     #   # Evaluation
     #   for dataset in [mnist.validation, mnist.test]:

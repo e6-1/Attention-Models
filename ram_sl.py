@@ -29,7 +29,7 @@ n_steps = config.step
 loc_mean_arr = []
 sampled_loc_arr = []
 
-TEMPERATURE = 10
+TEMPERATURE = 100
 
 def get_next_input(output, i):
   loc, loc_mean = loc_net(output)
@@ -42,15 +42,15 @@ def get_next_input(output, i):
 # placeholders
 images_ph = tf.placeholder(tf.float32,
                            [None, config.original_size * config.original_size *
-                            config.num_channels])
-labels_ph = tf.placeholder(tf.int64, [None])
-locs_ph = tf.placeholder(tf.float32, [None, 6, 2])
-labels_ph = tf.placeholder(tf.int64, [None])
-targets_ph = tf.placeholder(tf.float32, [None, config.num_classes])
-is_distilling = tf.placeholder(tf.bool)
+                            config.num_channels], name="images")
+labels_ph = tf.placeholder(tf.int64, [None], name="labels")
+loc_batches_ph = tf.placeholder(tf.float32, [None, 6, 2], name="location_batches")
+locs_ph = tf.placeholder(tf.float32, [None, 2], name="location_batches")
+targets_ph = tf.placeholder(tf.float32, [None, config.num_classes], name="target_logits")
+inputs_ph = tf.placeholder(tf.float32, [None, config.cell_output_size], name="expected_RNN_states")
+is_distilling = tf.placeholder(tf.bool, name="using_distillation")
 targets_w_temp = tf.div(targets_ph, TEMPERATURE)
-zero_targets_ph = targets_ph - tf.reduce_mean(targets_ph)  # zero mean
-locs_list = tf.split(value=locs_ph, num_or_size_splits=6, axis=1)
+locs_list = tf.split(value=loc_batches_ph, num_or_size_splits=6, axis=1)
 locs_list = [tf.squeeze(l) for l in locs_list]
 
 # Build the aux nets.
@@ -82,22 +82,18 @@ logits_w_temp = tf.div(logits, TEMPERATURE)
 softmax = tf.nn.softmax(logits)
 
 # student-teacher loss
-zero = tf.constant(0.0)
-# distill_lambda = tf.Variable(0.5, name="distill_lambda")
-distill_lambda = tf.constant(0.75, name="distill_lambda")
-distill_scaling = tf.maximum(distill_lambda, zero)
-ndistill_scaling = tf.maximum(1 - distill_lambda, zero)
-distill_logits = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits_w_temp, labels=targets_w_temp))
-distill_locs = tf.nn.l2_loss(tf.stack(loc_mean_arr, axis=1) - locs_ph)
-distill_loss = distill_scaling * distill_logits + distill_locs
-# distill_loss = distill_scaling * tf.reduce_sum(tf.scalar_mul(0.5, tf.square(zero_logits - zero_targets_ph))) + tf.nn.l2_loss(tf.stack(loc_mean_arr, axis=1) - locs_ph)
+distill_xent = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits_w_temp, labels=targets_w_temp)) / (config.batch_size * config.M)
+
+# LocNet loss
+locs_loss = tf.nn.l2_loss(tf.clip_by_value(tf.nn.xw_plus_b(inputs_ph, loc_net.w, loc_net.b), -1., 1.) - locs_ph)
 
 # cross-entropy.
 xent = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=labels_ph)
 xent = tf.reduce_mean(xent) / (config.batch_size * config.M)
 pred_labels = tf.argmax(logits, 1)
 
-total_loss = distill_scaling * distill_loss + ndistill_scaling * xent
+# Hybrid loss
+core_loss = 0.1 * distill_xent + 0.9 * xent
 
 # learning rate
 global_step = tf.get_variable(
@@ -113,7 +109,8 @@ learning_rate = tf.train.exponential_decay(
     staircase=True)
 learning_rate = tf.maximum(learning_rate, config.lr_min)
 opt = tf.train.AdamOptimizer(learning_rate)
-train_op = tf.train.AdamOptimizer().minimize(total_loss)
+train_core_op = opt.minimize(core_loss)
+train_loc_op = opt.minimize(locs_loss)
 
 mnist_train = mnist.train
 saver = tf.train.Saver()
@@ -121,31 +118,36 @@ with tf.Session() as sess:
   sess.run(tf.initialize_all_variables())
   # saver.restore(sess, "ram_model.ckpt")
   # print("Model restored.")
-  train_locs = np.load('train_distill.npz')['locs']
-  train_logits = np.load('train_distill.npz')['logits']
+  distillation = np.load('train_distill.npz')
+  train_locs = distillation['locs']
+  train_logits = distillation['logits']
+  train_rnn_output = distillation['rnn_output']
   mnist_train.locs = train_locs
   mnist_train.logits = train_logits
   dummy_locs = np.zeros((config.batch_size * config.M, 6, 2))
   dummy_logs = np.zeros((config.batch_size * config.M, config.num_classes))
+  dummy_inputs = np.zeros((config.batch_size * config.M * config.num_glimpses, config.cell_output_size))
   for i in xrange(n_steps):
+    loc_net.sampling = False
     batch_inds = np.random.randint(0, high=54999, size=config.batch_size)
     images, labels, locs, logits = mnist_train.next_batch(config.batch_size)
-    # duplicate M times, see Eqn (2)
-    images = np.tile(images, [config.M, 1])
-    labels = np.tile(labels, [config.M])
-    locs = np.tile(locs, [config.M, 1, 1])
-    logits = np.tile(logits, [config.M, 1])
-    loc_net.sampling = True
-    loss, location_loss, logit_loss, softmax_loss, _ = sess.run(
-            [distill_loss, distill_locs, distill_logits, xent, train_op],
+    loss, logit_loss, softmax_loss, _ = sess.run(
+            [core_loss, distill_xent, xent, train_core_op],
             feed_dict={
                 images_ph: images,
                 labels_ph: labels,
                 targets_ph: logits,
-                locs_ph: locs,
+                loc_batches_ph: locs,
+                inputs_ph: dummy_inputs,
                 is_distilling: True
             })
-
+    location_loss, _ = sess.run(
+      [locs_loss, train_loc_op],
+      feed_dict = {
+        inputs_ph: train_rnn_output[batch_inds].reshape(config.batch_size * config.num_glimpses, config.cell_output_size),
+        locs_ph: train_locs[batch_inds].reshape(config.batch_size * config.num_glimpses, config.loc_dim),
+        is_distilling: False
+      })
     if i and i % 1000 == 0:
       logging.info('step {}: loss = {:3.6f}, loc_loss = {:3.6f}, logits_loss = {:3.6f}, softmax_loss = {:3.6f}'.format(i, loss, location_loss, logit_loss, softmax_loss))
     if i and i % training_steps_per_epoch == 0:
@@ -165,8 +167,9 @@ with tf.Session() as sess:
                                  feed_dict={
                                      images_ph: images,
                                      labels_ph: labels,
-                                     locs_ph: dummy_locs,
+                                     loc_batches_ph: dummy_locs,
                                      targets_ph: dummy_logs,
+                                     inputs_ph: dummy_inputs,
                                      is_distilling: False
                                  })
           softmax_val = np.reshape(softmax_val,

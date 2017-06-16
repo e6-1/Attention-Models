@@ -49,6 +49,11 @@ locs_list = [tf.squeeze(l) for l in locs_list]
 with tf.variable_scope('glimpse_net'):
   gl = GlimpseNet(config, images_ph)
 
+# LocNet
+w = weight_variable((config.cell_out_size, config.loc_dim))
+b = bias_variable((config.loc_dim,))
+locs = tf.clip_by_value(tf.nn.xw_plus_b(inputs_ph, w, b), -1., 1.)
+
 # number of examples
 N = tf.shape(images_ph)[0]
 init_loc = tf.random_uniform((N, 2), minval=-1, maxval=1)

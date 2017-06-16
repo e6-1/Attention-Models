@@ -33,7 +33,7 @@ TEMPERATURE = 100
 
 def get_next_input(output, i):
   loc, loc_mean = loc_net(output)
-  loc = tf.where(is_distilling, locs_list[i - 1], loc)
+  # loc = tf.where(is_distilling, locs_list[i - 1], loc)
   gl_next = gl(loc)  # model's location
   loc_mean_arr.append(loc_mean)
   sampled_loc_arr.append(loc)

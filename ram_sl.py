@@ -128,11 +128,15 @@ with tf.Session() as sess:
   loc_net.sampling = False
   for i in xrange(n_steps):
     batch_inds = np.random.randint(0, high=54999, size=config.batch_size)
+    batch_input = train_rnn_output[batch_inds]
+    batch_input = batch_input.reshape(config.batch_size * config.num_glimpses, config.cell_output_size)
+    batch_locs = train_locs[batch_inds]
+    batch_locs = batch_locs.reshape(config.batch_size * config.num_glimpses, config.loc_dim)
     location_loss, _ = sess.run(
       [locs_loss, train_loc_op],
       feed_dict = {
-        inputs_ph: train_rnn_output[batch_inds].reshape(config.batch_size * config.num_glimpses, config.cell_output_size),
-        locs_ph: train_locs[batch_inds].reshape(config.batch_size * config.num_glimpses, config.loc_dim)
+        inputs_ph: batch_input,
+        locs_ph: batch_locs
       })
   print("Pre-trained location network...")
   for i in xrange(n_steps):

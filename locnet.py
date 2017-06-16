@@ -49,3 +49,6 @@ with tf.Session() as sess:
 
     if i and i % 1000 == 0:
       logging.info('step {}: loss = {:3.6f}'.format(i, loss))
+
+  new_locs = sess.run([locs], feed_dict={inputs_ph train_inputs})
+  results = np.zeros((55000*6, ))

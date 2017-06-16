@@ -33,7 +33,6 @@ TEMPERATURE = 100
 
 def get_next_input(output, i):
   loc, loc_mean = loc_net(output)
-  # loc = tf.where(is_distilling, locs_list[i - 1], loc)
   gl_next = gl(loc)  # model's location
   loc_mean_arr.append(loc_mean)
   sampled_loc_arr.append(loc)
@@ -48,7 +47,6 @@ loc_batches_ph = tf.placeholder(tf.float32, [None, 6, 2], name="location_batches
 locs_ph = tf.placeholder(tf.float32, [None, 2], name="location_batches")
 targets_ph = tf.placeholder(tf.float32, [None, config.num_classes], name="target_logits")
 inputs_ph = tf.placeholder(tf.float32, [None, config.cell_output_size], name="expected_RNN_states")
-is_distilling = tf.placeholder(tf.bool, name="using_distillation")
 targets_w_temp = tf.div(targets_ph, TEMPERATURE)
 locs_list = tf.split(value=loc_batches_ph, num_or_size_splits=6, axis=1)
 locs_list = [tf.squeeze(l) for l in locs_list]
@@ -127,6 +125,16 @@ with tf.Session() as sess:
   dummy_locs = np.zeros((config.batch_size * config.M, 6, 2))
   dummy_logs = np.zeros((config.batch_size * config.M, config.num_classes))
   dummy_inputs = np.zeros((config.batch_size * config.M * config.num_glimpses, config.cell_output_size))
+  loc_net.sampling = False
+  for i in xrange(n_steps):
+    batch_inds = np.random.randint(0, high=54999, size=config.batch_size)
+    location_loss, _ = sess.run(
+      [locs_loss, train_loc_op],
+      feed_dict = {
+        inputs_ph: train_rnn_output[batch_inds].reshape(config.batch_size * config.num_glimpses, config.cell_output_size),
+        locs_ph: train_locs[batch_inds].reshape(config.batch_size * config.num_glimpses, config.loc_dim)
+      })
+  print("Pre-trained location network...")
   for i in xrange(n_steps):
     loc_net.sampling = False
     batch_inds = np.random.randint(0, high=54999, size=config.batch_size)
@@ -138,18 +146,10 @@ with tf.Session() as sess:
                 labels_ph: labels,
                 targets_ph: logits,
                 loc_batches_ph: locs,
-                inputs_ph: dummy_inputs,
-                is_distilling: True
+                inputs_ph: dummy_inputs
             })
-    location_loss, _ = sess.run(
-      [locs_loss, train_loc_op],
-      feed_dict = {
-        inputs_ph: train_rnn_output[batch_inds].reshape(config.batch_size * config.num_glimpses, config.cell_output_size),
-        locs_ph: train_locs[batch_inds].reshape(config.batch_size * config.num_glimpses, config.loc_dim),
-        is_distilling: False
-      })
     if i and i % 1000 == 0:
-      logging.info('step {}: loss = {:3.6f}, loc_loss = {:3.6f}, logits_loss = {:3.6f}, softmax_loss = {:3.6f}'.format(i, loss, location_loss, logit_loss, softmax_loss))
+      logging.info('step {}: loss = {:3.6f}, logits_loss = {:3.6f}, softmax_loss = {:3.6f}'.format(i, loss, logit_loss, softmax_loss))
     if i and i % training_steps_per_epoch == 0:
       # Evaluation
       for dataset in [mnist.validation, mnist.test]:
@@ -169,8 +169,7 @@ with tf.Session() as sess:
                                      labels_ph: labels,
                                      loc_batches_ph: dummy_locs,
                                      targets_ph: dummy_logs,
-                                     inputs_ph: dummy_inputs,
-                                     is_distilling: False
+                                     inputs_ph: dummy_inputs
                                  })
           softmax_val = np.reshape(softmax_val,
                                    [config.M, -1, config.num_classes])

@@ -21,7 +21,7 @@ logging.getLogger().setLevel(logging.INFO)
 # rnn_cell = tf.nn.rnn_cell
 # seq2seq = tf.nn.seq2seq
 
-mnist = input_data.read_data_sets('MNIST_data', one_hot=False)
+mnist = input_data.read_data_sets('../MNIST_data', one_hot=False)
 mnist_train = mnist.train
 
 config = Config()

@@ -48,8 +48,8 @@ class GlimpseNet(object):
         tf.shape(self.images_ph)[0], self.original_size, self.original_size,
         self.num_channels
     ])
-    glimpse_imgs = tf.image.extract_glimpse(imgs,
-                                            [self.win_size, self.win_size], loc)
+    glimpse_imgs = tf.image.extract_glimpse(input=imgs,
+                                            size=[self.win_size, self.win_size], offsets=loc)
     # glimpse_imgs = tf.reshape(glimpse_imgs, [
     #     tf.shape(loc)[0], self.win_size * self.win_size * self.num_channels
     # ])
@@ -161,18 +161,19 @@ class ContextNet(object):
         'wc2': tf.Variable(tf.random_normal([5, 5, 32, 32])),
         # 5x5 conv, 32 inputs, 32 outputs
         'wc3': tf.Variable(tf.random_normal([5, 5, 32, 32])),
-        # fully connected, 16*16*32 inputs, 1024 outputs
-        'wd1': tf.Variable(tf.random_normal([16*16*32, 1024]))
+        # fully connected, 16*16*32 inputs, 256 outputs
+        'wd1': tf.Variable(tf.random_normal([16*16*32, 256]))
     }
     self.biases = {
         'bc1': tf.Variable(tf.random_normal([32])),
         'bc2': tf.Variable(tf.random_normal([32])),
         'bc3': tf.Variable(tf.random_normal([32])),
-        'bd1': tf.Variable(tf.random_normal([1024]))
+        'bd1': tf.Variable(tf.random_normal([256]))
     }
+    self.resize_shape = tf.constant([16, 16])
 
   def __call__(self, imgs):
-    imgs = tf.image.resize_image_with_crop_or_pad(imgs, 16, 16)
+    imgs = tf.image.resize_images(imgs, self.resize_shape)
 
     # Image network
     conv1 = conv2d(imgs, self.weights['wc1'], self.biases['bc1'])

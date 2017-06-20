@@ -15,6 +15,7 @@ from config import Config
 from tensorflow.examples.tutorials.mnist import input_data
 import tensorflow.contrib.rnn as rnn_cell
 import tensorflow.contrib.legacy_seq2seq as seq2seq
+from tensorflow.python.ops.rnn import raw_rnn
 
 # rnn_cell = tf.contrib.rnn
 # seq2seq = tf.contrib.legacy_seq2seq
@@ -31,7 +32,9 @@ sampled_loc_arr = []
 
 
 def get_next_input(output, i):
-  loc, loc_mean = loc_net(output)
+  global context
+  second_lstm_output, context = second_lstm(output, context)
+  loc, loc_mean = loc_net(second_lstm_output)
   gl_next = gl(loc)
   loc_mean_arr.append(loc_mean)
   sampled_loc_arr.append(loc)
@@ -39,8 +42,10 @@ def get_next_input(output, i):
 
 # placeholders
 images_ph = tf.placeholder(tf.float32,
-                           [None, config.original_size * config.original_size *
-                            config.num_channels])
+                           [None,
+                           config.original_size,
+                           config.original_size,
+                           config.num_channels])
 labels_ph = tf.placeholder(tf.int64, [None])
 
 # Build the aux nets.
@@ -53,22 +58,52 @@ with tf.variable_scope('context_net'):
 
 # number of examples
 N = tf.shape(images_ph)[0]
-init_loc = tf.random_uniform((N, 2), minval=-1, maxval=1)
-init_glimpse = gl(init_loc)
+
+# Process context
+context = cl(images_ph)
+loc = loc_net(context)[0]
+glimpse = gl(loc)
+
 # Core network.
-lstm_cell = rnn_cell.LSTMCell(config.cell_size, state_is_tuple=True)
-init_state = lstm_cell.zero_state(N, tf.float32)
-inputs = [init_glimpse]
-inputs.extend([0] * (config.num_glimpses))
-outputs, _ = seq2seq.rnn_decoder(
-    inputs, init_state, lstm_cell, loop_function=get_next_input)
+with tf.variable_scope('first', reuse=None):
+  first_lstm = tf.contrib.rnn.BasicLSTMCell(
+            config.cell_size, forget_bias=0.0, state_is_tuple=False,
+            reuse=tf.get_variable_scope().reuse)
+with tf.variable_scope('second', reuse=None):
+  second_lstm = tf.contrib.rnn.BasicLSTMCell(
+            config.cell_size, forget_bias=0.0, state_is_tuple=False,
+            reuse=tf.get_variable_scope().reuse)
+first_state = tf.zeros((N, 2*config.cell_size))
+second_state = tf.concat([context, context], axis=1)
+
+outputs = []
+for time_step in range(config.num_glimpses):
+  with tf.variable_scope('first'):
+    if time_step > 0: tf.get_variable_scope().reuse_variables()
+    first_output, first_state = first_lstm(glimpse, first_state)
+  with tf.variable_scope('second'):
+    if time_step > 0: tf.get_variable_scope().reuse_variables()
+    second_output, second_state = second_lstm(first_output, second_state)
+  loc, loc_mean = loc_net(second_output)
+  glimpse = gl(loc)
+  loc_mean_arr.append(loc_mean)
+  sampled_loc_arr.append(loc)
+  outputs.append(first_output)
+
+# inputs = [init_glimpse]
+# inputs.extend([0] * (config.num_glimpses))
+# outputs, _ = seq2seq.rnn_decoder(
+#     decoder_inputs=inputs,
+#     initial_state=context,
+#     cell=first_lstm,
+#     loop_function=get_next_input)
 
 # Time independent baselines
 with tf.variable_scope('baseline'):
   w_baseline = weight_variable((config.cell_output_size, 1))
   b_baseline = bias_variable((1,))
 baselines = []
-for t, output in enumerate(outputs[1:]):
+for t, output in enumerate(outputs):
   baseline_t = tf.nn.xw_plus_b(output, w_baseline, b_baseline)
   baseline_t = tf.squeeze(baseline_t)
   baselines.append(baseline_t)
@@ -123,9 +158,10 @@ train_op = opt.apply_gradients(zip(grads, var_list), global_step=global_step)
 with tf.Session() as sess:
   sess.run(tf.initialize_all_variables())
   for i in xrange(n_steps):
-    images, labels = mnist.train.next_batch(config.batch_size)
+    images, labels, _, _ = mnist.train.next_batch(config.batch_size)
+    images = images.reshape((images.shape[0], config.original_size, config.original_size, config.num_channels))
     # duplicate M times, see Eqn (2)
-    images = np.tile(images, [config.M, 1])
+    images = np.tile(images, [config.M, 1, 1, 1])
     labels = np.tile(labels, [config.M])
     loc_net.sampling = True
     adv_val, baselines_mse_val, xent_val, logllratio_val, \
@@ -152,7 +188,7 @@ with tf.Session() as sess:
         num_samples = steps_per_epoch * config.batch_size
         loc_net.sampling = True
         for test_step in xrange(steps_per_epoch):
-          images, labels = dataset.next_batch(config.batch_size)
+          images, labels, _, _ = dataset.next_batch(config.batch_size)
           labels_bak = labels
           # Duplicate M times
           images = np.tile(images, [config.M, 1])

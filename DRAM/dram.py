@@ -190,8 +190,9 @@ with tf.Session() as sess:
         for test_step in xrange(steps_per_epoch):
           images, labels, _, _ = dataset.next_batch(config.batch_size)
           labels_bak = labels
-          # Duplicate M times
-          images = np.tile(images, [config.M, 1])
+          images = images.reshape((images.shape[0], config.original_size, config.original_size, config.num_channels))
+          # duplicate M times, see Eqn (2)
+          images = np.tile(images, [config.M, 1, 1, 1])
           labels = np.tile(labels, [config.M])
           softmax_val = sess.run(softmax,
                                  feed_dict={

@@ -9,7 +9,7 @@ class Config(object):
   depth = 1
   sensor_size = win_size**2 * depth
   minRadius = 8
-  hg_size = hl_size = 64
+  hg_size = hl_size = 128
   g_size = 256
   cell_output_size = 256
   loc_dim = 2

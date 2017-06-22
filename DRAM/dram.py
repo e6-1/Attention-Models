@@ -172,7 +172,7 @@ with tf.Session() as sess:
                 images_ph: images,
                 labels_ph: labels
             })
-    if i and i % 100 == 0:
+    if i and i % 1000 == 0:
       logging.info('step {}: lr = {:3.6f}'.format(i, lr_val))
       logging.info(
           'step {}: reward = {:3.4f}\tloss = {:3.4f}\txent = {:3.4f}'.format(

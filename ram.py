@@ -127,7 +127,6 @@ locs_op = tf.stack(loc_mean_arr, axis=1)
 rnns_op = tf.stack(rnn_output_arr, axis=1)
 
 saver = tf.train.Saver()
-
 # Training code
 accs = []
 for train_iter in range(config.num_train_iterations):
@@ -189,9 +188,9 @@ for train_iter in range(config.num_train_iterations):
              logging.info('test accuracy = {}'.format(acc))
              iter_accs.append(acc)
      accs.append(iter_accs)
-     # # Save model
-     # save_path = saver.save(sess, "ram_model.ckpt")
-     # print("Model saved in file: %s" % save_path)
+     # Save model
+     save_path = saver.save(sess, "ram_model.ckpt")
+     print("Model saved in file: %s" % save_path)
 
 # Save accuracy means/stds to CSV
 acc_means = [np.mean(np.array(acc)) for acc in accs]

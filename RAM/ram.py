@@ -32,8 +32,9 @@ rnn_output_arr = []
 
 
 def get_next_input(output, i):
+  global loc
   rnn_output_arr.append(output)
-  loc, loc_mean = loc_net(output)
+  loc, loc_mean = loc_net(output, loc)
   gl_next = gl(loc)
   loc_mean_arr.append(loc_mean)
   sampled_loc_arr.append(loc)
@@ -53,8 +54,8 @@ with tf.variable_scope('loc_net'):
 
 # number of examples
 N = tf.shape(images_ph)[0]
-init_loc = tf.random_uniform((N, 2), minval=-1, maxval=1)
-init_glimpse = gl(init_loc)
+loc = tf.random_uniform((N, 2), minval=-1, maxval=1)
+init_glimpse = gl(loc)
 # Core network.
 lstm_cell = rnn_cell.LSTMCell(config.cell_size, state_is_tuple=True)
 init_state = lstm_cell.zero_state(N, tf.float32)

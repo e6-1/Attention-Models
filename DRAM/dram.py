@@ -154,8 +154,8 @@ with tf.device('/gpu:0'):
   learning_rate = tf.maximum(learning_rate, config.lr_min)
   opt = tf.train.AdamOptimizer(learning_rate)
   train_op = opt.apply_gradients(zip(grads, var_list), global_step=global_step)
-
-  with tf.Session() as sess:
+  tf_config = tf.ConfigProto(allow_soft_placement=True)
+  with tf.Session(config=tf_config) as sess:
     sess.run(tf.initialize_all_variables())
     for i in xrange(n_steps):
       images, labels, _, _ = mnist.train.next_batch(config.batch_size)

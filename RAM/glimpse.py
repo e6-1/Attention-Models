@@ -88,7 +88,8 @@ class LocNet(object):
 
   def __call__(self, input, prev_loc):
     # mean = tf.clip_by_value(tf.nn.xw_plus_b(input, self.w, self.b), -1., 1.)
-    mean = tf.clip_by_value(tf.add(tf.matmul(input, self.w), prev_loc), -1., 1.)
+    # mean = tf.clip_by_value(tf.add(tf.matmul(input, self.w), prev_loc), -1., 1.)
+    mean = tf.clip_by_value(tf.add(tf.matmul(input, self.w), tf.add(prev_loc, self.b)), -1., 1.)
     mean = tf.stop_gradient(mean)
     if self._sampling:
       loc = mean + tf.random_normal(

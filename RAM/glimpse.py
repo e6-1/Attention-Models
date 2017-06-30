@@ -84,7 +84,7 @@ class LocNet(object):
 
   def init_weights(self):
     self.w = weight_variable((self.input_dim, self.loc_dim))
-    # self.b = bias_variable((self.loc_dim,))
+    self.b = bias_variable((self.loc_dim,))
 
   def __call__(self, input, prev_loc):
     # mean = tf.clip_by_value(tf.nn.xw_plus_b(input, self.w, self.b), -1., 1.)

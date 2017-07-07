@@ -190,8 +190,8 @@ for train_iter in range(config.num_train_iterations):
              iter_accs.append(acc)
      accs.append(iter_accs)
      # Save model
-     save_path = saver.save(sess, "ram_model.ckpt")
-     print("Model saved in file: %s" % save_path)
+     # save_path = saver.save(sess, "ram_model.ckpt")
+     # print("Model saved in file: %s" % save_path)
 
 # Save accuracy means/stds to CSV
 acc_means = [np.mean(np.array(acc)) for acc in accs]
@@ -200,7 +200,7 @@ results = np.ndarray((len(accs), 2))
 results[:, 0] = acc_means
 results[:, 1] = acc_stds
 np.savetxt('train_acc_results.csv', results)
-
+"""
 # Saving locations 
 with tf.Session() as sess:
 
@@ -240,3 +240,4 @@ with tf.Session() as sess:
 #           })
 #   np.savez_compressed("validation_locs", valid_locs)
 #   print("Saved validation....")
+"""

@@ -30,4 +30,4 @@ class Config(object):
   lamda = 0.5
 
   # number of times to train
-  num_train_iterations = 1
+  num_train_iterations = 20

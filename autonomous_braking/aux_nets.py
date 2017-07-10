@@ -72,7 +72,7 @@ class GlimpseNet(object):
         # 5x5 conv, 32 inputs, 32 outputs
         'wc3': tf.Variable(tf.random_normal([5, 5, 32, 32])),
         # fully connected, 8*8*32 inputs, 1024 outputs
-        'wd1': tf.Variable(tf.random_normal([8*8*32, self.g_size])),
+        'wd1': tf.Variable(tf.random_normal([32*32*32, self.g_size])),
         # fully connected, 2 inputs, 1024 outputs
         'wd2': tf.Variable(tf.random_normal([2, self.g_size]))
 
@@ -158,7 +158,7 @@ class ContextNet(object):
         # 5x5 conv, 32 inputs, 32 outputs
         'wc3': tf.Variable(tf.random_normal([5, 5, 32, 32])),
         # fully connected, 16*16*32 inputs, 256 outputs
-        'wd1': tf.Variable(tf.random_normal([16*16*32, 256]))
+        'wd1': tf.Variable(tf.random_normal([32*32*32, 256]))
     }
     self.biases = {
         'bc1': tf.Variable(tf.random_normal([32])),

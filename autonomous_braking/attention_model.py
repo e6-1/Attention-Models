@@ -9,7 +9,7 @@ import tensorflow as tf
 import numpy as np
 
 from aux_nets import ContextNet, GlimpseNet, LocNet
-from utils import weight_variable, bias_variable, loglikelihood, softmax_with_temp
+from utils import minibatch, weight_variable, bias_variable, loglikelihood, softmax_with_temp
 from config import Config
 
 from tensorflow.examples.tutorials.mnist import input_data
@@ -30,6 +30,7 @@ sampled_loc_arr = []
 def get_next_input(output, i):
   global loc
   loc, loc_mean = loc_net(output)
+  loc = tf.Print(loc, [loc])
   gl_next = gl(loc)
   loc_mean_arr.append(loc_mean)
   sampled_loc_arr.append(loc)
@@ -49,11 +50,12 @@ with tf.variable_scope('glimpse_net'):
 with tf.variable_scope('loc_net'):
   loc_net = LocNet(config)
 with tf.variable_scope('context_net'):
-  cl = ContextNet(config)
+   cl = ContextNet(config)
 
 # number of examples
 N = tf.shape(images_ph)[0]
 context = cl(images_ph)
+# loc = tf.random_uniform((N, 2), minval=-1, maxval=1)
 loc = loc_net(context)[0]
 init_glimpse = gl(loc)
 
@@ -146,6 +148,7 @@ with tf.Session() as sess:
      label_batches = minibatch(braking[:, 1], 32, 1000)
 
      for images, labels in zip(img_batches, label_batches):
+       logging.info('fraction braking: {:2.2f}'.format(labels.sum() / labels.shape[0]))
        # duplicate M times, see Eqn (2)
        images = np.tile(images, [config.M, 1, 1, 1])
        labels = np.tile(labels, [config.M])

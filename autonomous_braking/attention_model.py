@@ -28,7 +28,8 @@ loc_mean_arr = []
 sampled_loc_arr = []
 
 def get_next_input(output, i):
-  loc, loc_mean = loc_net(output, loc)
+  global loc
+  loc, loc_mean = loc_net(output)
   gl_next = gl(loc)
   loc_mean_arr.append(loc_mean)
   sampled_loc_arr.append(loc)

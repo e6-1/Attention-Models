@@ -9,6 +9,28 @@ import matplotlib.patches as patches
 
 distributions = tf.contrib.distributions
 
+def get_sub_seq(seq, start, end):
+    """Get the sub sequence starting at the start index and ending at the end index."""
+    arr = seq[max([0, start]):end]
+    if start < 0:
+        arr = np.append(np.zeros((abs(start),2)), arr, axis=0)
+    for i in range(len(arr)):
+        if np.sum(arr[i]) == 0:
+            arr[i] = [1, 0]
+    return arr
+
+
+def minibatch(data, batch_size, data_size):
+    """Generates a minibatch from the given data and parameters."""
+    randomized = np.random.permutation(data)
+    batches = []
+    num_batches = 0
+    while num_batches * batch_size < data_size:
+        new_batch = randomized[num_batches * batch_size:(num_batches + 1) * batch_size]
+        batches.append(new_batch)
+        num_batches += 1
+    return batches
+
 
 def conv2d(x, W, b, strides=1):
     # Conv2D wrapper, with bias and relu activation

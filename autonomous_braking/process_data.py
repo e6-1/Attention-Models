@@ -3,6 +3,7 @@ from imageio.core.util import asarray as imgToArr
 import matplotlib.pylab as pylab
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 # Columns: Frame, Brake, GazeX, GazeY
 dataFile = './data/cleaned_data.csv'
@@ -19,15 +20,16 @@ df = df.reset_index(drop=True)  # Resets the index to the usual 0, 1, 2, ...
 
 filename = 'data/driving.avi'
 vid = imageio.get_reader(filename,  'ffmpeg')
-batch = 1
-count = 1
-left_imgs = np.zeros((10000, 244, 450, 3))
-right_imgs = np.zeros((10000, 244, 450, 3))
-center_imgs = np.zeros((10000, 244, 450, 3))
-gazes = np.zeros((10000, 2))
-braking = np.zeros((10000, 2))
+batch = 0
+count = 0
+left_imgs = np.zeros((1000, 244, 450, 3))
+right_imgs = np.zeros((1000, 244, 450, 3))
+center_imgs = np.zeros((1000, 244, 450, 3))
+gazes = np.zeros((1000, 2))
+braking = np.zeros((1000, 2))
 img_size = (244, 900, 3)
-for i, row in df.iterrows():
+print("Processing frames...")
+for i, row in tqdm(df.iterrows()):
     frame = row['Frame']
     x = row['GazeX']
     y = row['GazeY']
@@ -56,11 +58,10 @@ for i, row in df.iterrows():
 
         # increment count
         count += 1
-
         # Wipe and save batch
-        if count % 10000 == 0:
+        if count % 1000 == 0:
             print("processed: {0}".format(count))
-            SAVE_FILE_NAME = 'data/batch_{0}'.format(batch)
+            SAVE_FILE_NAME = '/home/data2/vision6/ethpete/ab_data/batch_{0}'.format(batch)
             np.savez_compressed(
                 SAVE_FILE_NAME,
                 left_imgs=left_imgs,
@@ -72,4 +73,4 @@ for i, row in df.iterrows():
 
             # Reset
             batch += 1
-            count = 1
+            count = 0

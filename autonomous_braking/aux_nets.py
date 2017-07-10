@@ -66,7 +66,7 @@ class GlimpseNet(object):
     # Store layers weight & bias
     weights = {
         # 5x5 conv, 1 input, 32 outputs
-        'wc1': tf.Variable(tf.random_normal([5, 5, 1, 32])),
+        'wc1': tf.Variable(tf.random_normal([5, 5, 3, 32])),
         # 5x5 conv, 32 inputs, 32 outputs
         'wc2': tf.Variable(tf.random_normal([5, 5, 32, 32])),
         # 5x5 conv, 32 inputs, 32 outputs
@@ -152,7 +152,7 @@ class ContextNet(object):
   def __init__(self, config):
     self.weights = {
         # 5x5 conv, 1 input, 32 outputs
-        'wc1': tf.Variable(tf.random_normal([5, 5, 1, 32])),
+        'wc1': tf.Variable(tf.random_normal([5, 5, 3, 32])),
         # 5x5 conv, 32 inputs, 32 outputs
         'wc2': tf.Variable(tf.random_normal([5, 5, 32, 32])),
         # 5x5 conv, 32 inputs, 32 outputs

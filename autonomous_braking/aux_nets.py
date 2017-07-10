@@ -44,11 +44,7 @@ class GlimpseNet(object):
 
   def get_glimpse(self, loc):
     """Take glimpse on the original images."""
-    #imgs = tf.reshape(self.images_ph, [
-    #   tf.shape(self.images_ph)[0], self.original_size, self.original_size,
-    #   self.num_channels
-    #])
-    glimpse_imgs = tf.image.extract_glimpse(input=images_ph,
+    glimpse_imgs = tf.image.extract_glimpse(input=self.images_ph,
                                             size=[self.win_size, self.win_size], offsets=loc)
     # glimpse_imgs = tf.reshape(glimpse_imgs, [
     #     tf.shape(loc)[0], self.win_size * self.win_size * self.num_channels

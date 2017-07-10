@@ -41,7 +41,7 @@ images_ph = tf.placeholder(tf.float32,
                              config.img_height,
                              config.img_width,
                              config.num_channels])
-labels_ph = tf.placeholder(tf.int64, [None, config.num_classes])
+labels_ph = tf.placeholder(tf.int64, [None])
 
 # Build the aux nets.
 with tf.variable_scope('glimpse_net'):
@@ -109,9 +109,10 @@ grads, _ = tf.clip_by_global_norm(grads, config.max_grad_norm)
 # learning rate
 global_step = tf.get_variable(
     'global_step', [], initializer=tf.constant_initializer(0), trainable=False)
-training_steps_per_epoch = mnist.train.num_examples // config.batch_size
+# training_steps_per_epoch = mnist.train.num_examples // config.batch_size
+training_steps_per_epoch = 80
 starter_learning_rate = config.lr_start
-# decay per training epoch
+#  decay per training epoch
 learning_rate = tf.train.exponential_decay(
     starter_learning_rate,
     global_step,
@@ -120,13 +121,11 @@ learning_rate = tf.train.exponential_decay(
     staircase=True)
 learning_rate = tf.maximum(learning_rate, config.lr_min)
 opt = tf.train.AdamOptimizer(learning_rate)
+# opt = tf.train.AdamOptimizer()
 train_op = opt.apply_gradients(zip(grads, var_list), global_step=global_step)
 
 # get locations
 locs_op = tf.stack(loc_mean_arr, axis=1)
-
-# get rnn outputs
-rnns_op = tf.stack(rnn_output_arr, axis=1)
 
 saver = tf.train.Saver()
 # Training code
@@ -135,7 +134,7 @@ with tf.Session() as sess:
    # saver.restore(sess, "ram_model.ckpt")
    # print("Model restored.")
    for i in xrange(n_steps):
-     data = np.load('/home/data2/vision6/ethpete/ab_data/batch_{0}.npz')
+     data = np.load('/home/data2/vision6/ethpete/ab_data/batch_{0}.npz'.format(i))
 
      left_imgs = data['left_imgs']
      right_imgs = data['right_imgs']
@@ -145,11 +144,11 @@ with tf.Session() as sess:
 
      # TODO: do left and right also in separate files
      images = center_imgs
-     labels = braking
+     labels = braking[:, 1]
 
      # duplicate M times, see Eqn (2)
      images = np.tile(images, [config.M, 1, 1, 1])
-     labels = np.tile(labels, [config.M, 1, 1])
+     labels = np.tile(labels, [config.M])
      loc_net.samping = True
      adv_val, baselines_mse_val, xent_val, logllratio_val, \
          reward_val, loss_val, lr_val, _ = sess.run(
@@ -159,7 +158,7 @@ with tf.Session() as sess:
                  images_ph: images,
                  labels_ph: labels
              })
-     if i and i % 1000 == 0:
+     if i and i % 1 == 0:
        logging.info('step {}: lr = {:3.6f}'.format(i, lr_val))
        logging.info(
            'step {}: reward = {:3.4f}\tloss = {:3.4f}\txent = {:3.4f}'.format(

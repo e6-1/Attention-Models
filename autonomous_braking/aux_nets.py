@@ -44,11 +44,11 @@ class GlimpseNet(object):
 
   def get_glimpse(self, loc):
     """Take glimpse on the original images."""
-    imgs = tf.reshape(self.images_ph, [
-        tf.shape(self.images_ph)[0], self.original_size, self.original_size,
-        self.num_channels
-    ])
-    glimpse_imgs = tf.image.extract_glimpse(input=imgs,
+    #imgs = tf.reshape(self.images_ph, [
+    #   tf.shape(self.images_ph)[0], self.original_size, self.original_size,
+    #   self.num_channels
+    #])
+    glimpse_imgs = tf.image.extract_glimpse(input=images_ph,
                                             size=[self.win_size, self.win_size], offsets=loc)
     # glimpse_imgs = tf.reshape(glimpse_imgs, [
     #     tf.shape(loc)[0], self.win_size * self.win_size * self.num_channels
@@ -170,7 +170,7 @@ class ContextNet(object):
         'bc3': tf.Variable(tf.random_normal([32])),
         'bd1': tf.Variable(tf.random_normal([256]))
     }
-    self.resize_shape = tf.constant([16, 16])
+    self.resize_shape = tf.constant([32, 32])
 
   def __call__(self, imgs):
     imgs = tf.image.resize_images(imgs, self.resize_shape)

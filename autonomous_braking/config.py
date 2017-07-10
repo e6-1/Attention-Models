@@ -1,4 +1,5 @@
 class Config(object):
+  original_size = 32
   win_size = 32
   bandwidth = win_size**2
   batch_size = 32
@@ -6,7 +7,7 @@ class Config(object):
   loc_std = 0.22
   img_width = 450
   img_height = 244
-  num_channels = 1
+  num_channels = 3
   depth = 1
   sensor_size = win_size**2 * depth
   minRadius = 8

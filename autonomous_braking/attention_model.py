@@ -135,7 +135,7 @@ with tf.Session() as sess:
    sess.run(tf.initialize_all_variables())
    # saver.restore(sess, "ram_model.ckpt")
    # print("Model restored.")
-   for i in xrange(n_steps):
+   for i in xrange(70):
      data = np.load('/home/data2/vision6/ethpete/ab_data/batch_{0}.npz'.format(i))
 
      left_imgs = data['left_imgs']
@@ -161,6 +161,7 @@ with tf.Session() as sess:
                    images_ph: images,
                    labels_ph: labels
                })
+       
        if i and i % 1 == 0:
          logging.info('step {}: lr = {:3.6f}'.format(i, lr_val))
          logging.info(

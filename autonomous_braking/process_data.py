@@ -4,6 +4,7 @@ import matplotlib.pylab as pylab
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+from random import shuffle
 
 # Columns: Frame, Brake, GazeX, GazeY
 dataFile = './data/cleaned_data.csv'
@@ -29,11 +30,13 @@ gazes = np.zeros((1000, 2))
 braking = np.zeros((1000, 2))
 img_size = (244, 900, 3)
 print("Processing frames...")
-for i, row in tqdm(df.iterrows()):
-    frame = row['Frame']
-    x = row['GazeX']
-    y = row['GazeY']
-    brake = row['Brake']
+indices = range(len(df))
+shuffle(indices)
+for index in indices:
+    frame = df.loc[index, 'Frame']
+    x = df.loc[index, 'GazeX']
+    y = df.loc[index, 'GazeY']
+    brake = df.loc[index, 'Brake']
     
     image = vid.get_data(frame)
     if image.shape == img_size:

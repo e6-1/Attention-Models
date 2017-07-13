@@ -133,8 +133,8 @@ saver = tf.train.Saver()
 # Training code
 with tf.Session() as sess:
    sess.run(tf.initialize_all_variables())
-   # saver.restore(sess, "ram_model.ckpt")
-   # print("Model restored.")
+   #saver.restore(sess, "ram_model.ckpt")
+   #print("Model restored.")
    for i in xrange(70):
      data = np.load('/home/data2/vision6/ethpete/ab_data/batch_{0}.npz'.format(i))
 
@@ -153,47 +153,39 @@ with tf.Session() as sess:
        images = np.tile(images, [config.M, 1, 1, 1])
        labels = np.tile(labels, [config.M])
        loc_net.sampling = True
-       adv_val, baselines_mse_val, xent_val, logllratio_val, \
-           reward_val, loss_val, lr_val, _ = sess.run(
-               [advs, baselines_mse, xent, logllratio,
-                reward, loss, learning_rate, train_op],
+       sess.run([train_op],
                feed_dict={
                    images_ph: images,
                    labels_ph: labels
                })
      print("Processed training batch {0}".format(i))
-     if i and i % 10 == 0:
-      logging.info("Test Data Checkpoint")
+     if i and (i + 1) % 10 == 0:
+       logging.info("Test Data Checkpoint")
+       acc = 0.0
+       batch_frac = 0.0
        for j in xrange(70, 80):
-          data = np.load('/home/data2/vision6/ethpete/ab_data/batch_{0}.npz'.format(j))
+         data = np.load('/home/data2/vision6/ethpete/ab_data/batch_{0}.npz'.format(j))
 
-          left_imgs = data['left_imgs']
-          right_imgs = data['right_imgs']
-          center_imgs = data['center_imgs']
-          gazes = data['gazes']
-          braking = data['braking']
+         left_imgs = data['left_imgs']
+         right_imgs = data['right_imgs']
+         center_imgs = data['center_imgs']
+         gazes = data['gazes']
+         braking = data['braking']
 
-          images = center_imgs
-          labels = braking[:, 1]
+         images = center_imgs
+         labels = braking[:, 1]
 
-          logging.info('fraction braking: {:2.2f}'.format(labels.sum() / labels.shape[0]))
-
-          loc_net.sampling = False
-          adv_val, baselines_mse_val, xent_val, logllratio_val, \
-          reward_val, loss_val, lr_val, _ = sess.run(
-            [advs, baselines_mse, xent, logllratio,
-              reward, loss, learning_rate, train_op],
-            feed_dict={
-                images_ph: images,
-                labels_ph: labels
-              })
-          logging.info('test batch {}: lr = {:3.6f}'.format(j, lr_val))
-          logging.info(
-          'step {}: reward = {:3.4f}\tloss = {:3.4f}\txent = {:3.4f}'.format(
-          i, reward_val, loss_val, xent_val))
-          logging.info('llratio = {:3.4f}\tbaselines_mse = {:3.4f}'.format(
-          logllratio_val, baselines_mse_val))
-
+         loc_net.sampling = False
+         reward_val = sess.run(
+           [reward],
+           feed_dict={
+               images_ph: images,
+               labels_ph: labels
+             })
+         acc += reward_val[0]
+         batch_frac += labels.sum() / labels.shape[0]
+       logging.info('test accuracy = {}'.format(acc / 10))
+       logging.info('batch_frac = {}'.format(batch_frac / 10))
        # if i and i % training_steps_per_epoch == 0:
        #   # Evaluation
        #   for dataset in [mnist.validation, mnist.test]:

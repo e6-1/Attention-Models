@@ -15,6 +15,7 @@ from config import Config
 from tensorflow.examples.tutorials.mnist import input_data
 import tensorflow.contrib.rnn as rnn_cell
 import tensorflow.contrib.legacy_seq2seq as seq2seq
+from random import shuffle
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -30,7 +31,6 @@ sampled_loc_arr = []
 def get_next_input(output, i):
   global loc
   loc, loc_mean = loc_net(output)
-  loc = tf.Print(loc, [loc])
   gl_next = gl(loc)
   loc_mean_arr.append(loc_mean)
   sampled_loc_arr.append(loc)
@@ -162,36 +162,35 @@ with tf.Session() as sess:
                      labels_ph: labels
                  })
        print("Processed training batch {0}".format(i))
-       if i and (i + 1) % 10 == 0:
-         logging.info("Test Data Checkpoint")
-         acc = 0.0
-         batch_frac = 0.0
-         for j in xrange(70, 80):
-           data = np.load('/home/data2/vision6/ethpete/ab_data/batch_{0}.npz'.format(j))
 
-           left_imgs = data['left_imgs']
-           right_imgs = data['right_imgs']
-           center_imgs = data['center_imgs']
-           gazes = data['gazes']
-           braking = data['braking']
+     logging.info("Test Data Checkpoint")
+     acc = 0.0
+     batch_frac = 0.0
+     for j in xrange(70, 80):
+       data = np.load('/home/data2/vision6/ethpete/ab_data/batch_{0}.npz'.format(j))
+       left_imgs = data['left_imgs']
+       right_imgs = data['right_imgs']
+       center_imgs = data['center_imgs']
+       gazes = data['gazes']
+       braking = data['braking']
 
-           images = center_imgs
-           labels = braking[:, 1]
+       images = center_imgs
+       labels = braking[:, 1]
 
-           images = np.tile(images, [config.M, 1, 1, 1])
-           labels = np.tile(labels, [config.M])
+       images = np.tile(images, [config.M, 1, 1, 1]) 
+       labels = np.tile(labels, [config.M])
 
-           loc_net.sampling = True
-           reward_val = sess.run(
-             [reward],
-             feed_dict={
-                 images_ph: images,
-                 labels_ph: labels
-               })
-           acc += reward_val[0]
-           batch_frac += labels.sum() / labels.shape[0]
-         logging.info('test accuracy = {}'.format(acc / 10))
-         logging.info('batch_frac = {}'.format(batch_frac / 10))
+       loc_net.sampling = True
+       reward_val = sess.run(
+         [reward],
+         feed_dict={
+             images_ph: images,
+             labels_ph: labels
+           })
+       acc += reward_val[0]
+       batch_frac += labels.sum() / labels.shape[0]
+     logging.info('test accuracy = {}'.format(acc / 10))
+     logging.info('batch_frac = {}'.format(batch_frac / 10))
          # if i and i % training_steps_per_epoch == 0:
          #   # Evaluation
          #   for dataset in [mnist.validation, mnist.test]:

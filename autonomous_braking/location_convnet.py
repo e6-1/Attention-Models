@@ -9,7 +9,10 @@ Project: https://github.com/aymericdamien/TensorFlow-Examples/
 
 from __future__ import print_function
 
+import numpy as np
+from random import shuffle
 import tensorflow as tf
+from utils import minibatch
 
 # Parameters
 learning_rate = 0.001
@@ -20,13 +23,13 @@ display_step = 10
 
 # Network Parameters
 input_width = 900
-input_height = 450
+input_height = 244
 input_channels = 1
 n_classes = 16 # MNIST total classes (0-9 digits)
 dropout = 0.75 # Dropout, probability to keep units
 
 # tf Graph input
-x = tf.placeholder(tf.float32, [None, input_width, input_height, input_channels])
+x = tf.placeholder(tf.float32, [None, input_height, input_width, input_channels])
 y = tf.placeholder(tf.float32, [None, n_classes])
 keep_prob = tf.placeholder(tf.float32) #dropout (keep probability)
 
@@ -39,24 +42,24 @@ def conv2d(x, W, b, strides=1):
     return tf.nn.relu(x)
 
 
-def maxpool2d(x, k=2):
+def maxpool2d(x, k=2, l=3):
     # MaxPool2D wrapper
-    return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1],
+    return tf.nn.max_pool(x, ksize=[1, k, l, 1], strides=[1, k, l, 1],
                           padding='SAME')
 
 
 # Create model
 def conv_net(x, weights, biases, dropout):
-
+    # x = tf.reshape(x, shape=[-1, input_height, input_width, input_channels])
     # Convolution Layer
     conv1 = conv2d(x, weights['wc1'], biases['bc1'])
     # Max Pooling (down-sampling)
-    conv1 = maxpool2d(conv1, k=2)
+    conv1 = maxpool2d(conv1)
 
     # Convolution Layer
     conv2 = conv2d(conv1, weights['wc2'], biases['bc2'])
     # Max Pooling (down-sampling)
-    conv2 = maxpool2d(conv2, k=2)
+    conv2 = maxpool2d(conv2, k=2, l=2)
 
     # Fully connected layer
     # Reshape conv2 output to fit fully connected layer input
@@ -77,7 +80,7 @@ weights = {
     # 5x5 conv, 32 inputs, 64 outputs
     'wc2': tf.Variable(tf.random_normal([5, 5, 32, 64])),
     # fully connected, 7*7*64 inputs, 1024 outputs
-    'wd1': tf.Variable(tf.random_normal([7*7*64, 1024])),
+    'wd1': tf.Variable(tf.random_normal([61*150*64, 1024])),
     # 1024 inputs, 10 outputs (class prediction)
     'out': tf.Variable(tf.random_normal([1024, n_classes]))
 }
@@ -113,9 +116,10 @@ with tf.Session() as sess:
         rand_batches = range(130)
         shuffle(rand_batches)
         for i in rand_batches:
-            data = np.load('/home/data2/vision6/ethpete/ab_data/batch_{0}.npz'.format(i))
+            data = np.load('/home/data2/vision6/ethpete/gaze_data/batch_{0}.npz'.format(i))
 
-            imgs = data['imgs']
+            imgs = data['imgs'][:, :, :, 0]
+            imgs = imgs.reshape((imgs.shape[0], imgs.shape[1], imgs.shape[2], 1))
             buckets = data['buckets']
 
             img_batches = minibatch(imgs, 32, 1000)
@@ -126,7 +130,7 @@ with tf.Session() as sess:
                 print("Processed training batch {0}".format(i))
 
         for j in range(130, 138):
-            data = np.load('/home/data2/vision6/ethpete/ab_data/batch_{0}.npz'.format(i))
+            data = np.load('/home/data2/vision6/ethpete/gaze_data/batch_{0}.npz'.format(i))
 
             imgs = data['imgs']
             buckets = data['buckets']

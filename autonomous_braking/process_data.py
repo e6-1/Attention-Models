@@ -41,11 +41,20 @@ count = 0
 
 batch_size = 1000
 buckets = np.zeros((batch_size, 16))
-imgs = np.zeros((batch_size, 244, 900, 3))
+imgs = np.zeros((batch_size, 244, 244, 1))
 gazes = np.zeros((batch_size, 2))
 img_size = (244, 900, 3)
 print("Processing frames...")
 indices = range(len(df))
+
+midx = 450
+width = 244
+midx_lower = midx - width / 2
+midx_upper = midx + width / 2
+
+# Drop the ones that are outside of the range we're considering
+df = df.drop(df[df['GazeX'] < midx_lower])
+df = df.drop(df[df['GazeX'] >= midx_upper])
 
 for index in indices:
     frame = df.loc[index, 'Frame']
@@ -57,8 +66,8 @@ for index in indices:
         height, width, depth = image.shape
 
         # Store images
-        imgs[count] = image
-        buckets[count] = get_bucket(num_buckets, x, y, 244, 900)
+        imgs[count] = image[:, midx_lower:midx_upper, 0]
+        buckets[count] = get_bucket(num_buckets, x, y, 244, 244)
 
         # Store gaze location
         gazes[count] = np.array([x, y])

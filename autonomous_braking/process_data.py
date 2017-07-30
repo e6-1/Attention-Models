@@ -23,6 +23,7 @@ def get_bucket(num_buckets, x, y, width, height):
 dataFile = './data/cleaned_data.csv'
 df = pd.read_csv(dataFile, delimiter='\t')
 
+"""
 brake = df[df['Brake'] > 0]
 nonbrake = df[df['Brake'] == 0]
 nonbrake = nonbrake[:len(brake)]  # Braking is far fewer than nonbraking, so trim down
@@ -31,18 +32,21 @@ df = df.drop(df[df['GazeX'] < 0].index)
 df = df.drop(df[df['GazeY'] < 0].index)
 df = df.dropna()
 df = df.reset_index(drop=True)  # Resets the index to the usual 0, 1, 2, ...
+"""
 
 filename = 'data/driving.avi'
 vid = imageio.get_reader(filename,  'ffmpeg')
 batch = 0
 count = 0
-buckets = np.zeros((1000, 16))
-left_imgs = np.zeros((1000, 244, 900, 3))
-braking = np.zeros((1000, 2))
+
+batch_size = 1000
+buckets = np.zeros((batch_size, 16))
+imgs = np.zeros((batch_size, 244, 900, 3))
+gazes = np.zeros((batch_size, 2))
 img_size = (244, 900, 3)
 print("Processing frames...")
 indices = range(len(df))
-shuffle(indices)
+
 for index in indices:
     frame = df.loc[index, 'Frame']
     x = df.loc[index, 'GazeX']
@@ -62,12 +66,12 @@ for index in indices:
         # increment count
         count += 1
         # Wipe and save batch
-        if count % 1000 == 0:
+        if count % batch_size == 0:
             print("processed: {0}".format(count))
             SAVE_FILE_NAME = '/home/data2/vision6/ethpete/gaze_data/batch_{0}'.format(batch)
             np.savez_compressed(
                 SAVE_FILE_NAME,
-                imgs=left_imgs,
+                imgs=imgs,
                 gazes=gazes,
                 buckets=buckets)
             print("Saved " + SAVE_FILE_NAME)

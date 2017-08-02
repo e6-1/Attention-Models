@@ -14,19 +14,18 @@ def get_bucket(num_buckets, x, y, width, height):
     num_buckets = int(sqrt(num_buckets))
     delta_width = width / num_buckets
     delta_height = height / num_buckets
-
     for i in range(num_buckets):
         if i == (num_buckets - 1):
             for j in range(num_buckets):
                 if j == (num_buckets - 1):
                     return num_buckets * j + i
-                if y < j * delta_height:
+                if y <= (j + 1) * delta_height:
                     return num_buckets * j + i
-        if x < i * delta_width:
+        if x <= (i + 1) * delta_width:
             for j in range(num_buckets):
                 if j == (num_buckets - 1):
-                    return num_buckets * j+ i
-                if y < j * delta_height:
+                    return num_buckets * j + i
+                if y <= (j + 1) * delta_height:
                     return (num_buckets * j + i)
 
 # Columns: Frame, Brake, GazeX, GazeY

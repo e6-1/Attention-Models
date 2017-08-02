@@ -15,17 +15,17 @@ import tensorflow as tf
 from utils import minibatch
 
 # Parameters
-learning_rate = 0.001
+learning_rate = 0.0001
 training_iters = 200000
-batches = 137
+batches = 126
 batch_size = 32
 display_step = 10
 
 # Network Parameters
-input_width = 900
+input_width = 244
 input_height = 244
 input_channels = 1
-n_classes = 16 # MNIST total classes (0-9 digits)
+n_classes = 4 # MNIST total classes (0-9 digits)
 dropout = 0.75 # Dropout, probability to keep units
 
 # tf Graph input
@@ -42,7 +42,7 @@ def conv2d(x, W, b, strides=1):
     return tf.nn.relu(x)
 
 
-def maxpool2d(x, k=2, l=3):
+def maxpool2d(x, k=2, l=2):
     # MaxPool2D wrapper
     return tf.nn.max_pool(x, ksize=[1, k, l, 1], strides=[1, k, l, 1],
                           padding='SAME')
@@ -59,7 +59,7 @@ def conv_net(x, weights, biases, dropout):
     # Convolution Layer
     conv2 = conv2d(conv1, weights['wc2'], biases['bc2'])
     # Max Pooling (down-sampling)
-    conv2 = maxpool2d(conv2, k=2, l=2)
+    conv2 = maxpool2d(conv2)
 
     # Fully connected layer
     # Reshape conv2 output to fit fully connected layer input
@@ -80,7 +80,7 @@ weights = {
     # 5x5 conv, 32 inputs, 64 outputs
     'wc2': tf.Variable(tf.random_normal([5, 5, 32, 64])),
     # fully connected, 7*7*64 inputs, 1024 outputs
-    'wd1': tf.Variable(tf.random_normal([61*150*64, 1024])),
+    'wd1': tf.Variable(tf.random_normal([61*61*64, 1024])),
     # 1024 inputs, 10 outputs (class prediction)
     'out': tf.Variable(tf.random_normal([1024, n_classes]))
 }
@@ -106,15 +106,18 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 # Initializing the variables
 init = tf.global_variables_initializer()
 
-saver = tf.train.Saver()
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.50)
+
 # Training code
+# with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
 with tf.Session() as sess:
     sess.run(init)
-    #saver.restore(sess, "ram_model.ckpt")
-    #print("Model restored.")
+    # saver.restore(sess, "ram_model.ckpt")
+    # print("Model restored.")
     for epoch in xrange(10):
-        rand_batches = range(130)
+        rand_batches = range(110)
         shuffle(rand_batches)
+        
         for i in rand_batches:
             data = np.load('/home/data2/vision6/ethpete/gaze_data/batch_{0}.npz'.format(i))
 
@@ -124,20 +127,20 @@ with tf.Session() as sess:
 
             img_batches = minibatch(imgs, 32, 1000)
             label_batches = minibatch(buckets, 32, 1000)
-
+            # print("Processing training batch {0}".format(i))
             for images, labels in zip(img_batches, label_batches):
                 sess.run(optimizer, feed_dict={x: images, y: labels, keep_prob: dropout})
-                print("Processed training batch {0}".format(i))
-
-        for j in range(130, 138):
-            data = np.load('/home/data2/vision6/ethpete/gaze_data/batch_{0}.npz'.format(i))
+            # print("Processed training batch {0}".format(i))
+        
+        for j in range(110, 126):
+            data = np.load('/home/data2/vision6/ethpete/gaze_data/batch_{0}.npz'.format(j))
 
             imgs = data['imgs']
             buckets = data['buckets']
-
+            assert not np.any(np.isnan(imgs))
             img_batches = minibatch(imgs, 32, 1000)
             label_batches = minibatch(buckets, 32, 1000)
-
+            print(buckets)
             for images, labels in zip(img_batches, label_batches):
 
                 # Calculate batch loss and accuracy

@@ -83,20 +83,4 @@ for index in indices:
         buckets[count, bucket] = 1
         # Store gaze location
         gazes[count] = np.array([x, y])
-
-        # increment count
-        count += 1
-        # Wipe and save batch
-        if count % batch_size == 0:
-            print("processed: {0}".format(count))
-            SAVE_FILE_NAME = '/home/data2/vision6/ethpete/gaze_data/batch_{0}'.format(batch)
-            np.savez_compressed(
-                SAVE_FILE_NAME,
-                imgs=imgs,
-                gazes=gazes,
-                buckets=buckets)
-            print("Saved " + SAVE_FILE_NAME)
-
-            # Reset
-            batch += 1
-            count = 0
+        print(x, y, bucket)

@@ -95,7 +95,7 @@ for index in indices:
                 gazes=gazes,
                 buckets=buckets)
             print("Saved " + SAVE_FILE_NAME)
-
+            buckets = np.zeros((batch_size, num_buckets))
             # Reset
             batch += 1
             count = 0

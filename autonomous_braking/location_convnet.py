@@ -108,13 +108,14 @@ init = tf.global_variables_initializer()
 
 gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.50)
 
+saver = tf.train.Saver()
 # Training code
 # with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
 with tf.Session() as sess:
     sess.run(init)
-    # saver.restore(sess, "ram_model.ckpt")
+    # saver.restore(sess, "loc_model.ckpt")
     # print("Model restored.")
-    for epoch in xrange(10):
+    for epoch in xrange(20):
         rand_batches = range(110)
         shuffle(rand_batches)
         
@@ -124,14 +125,15 @@ with tf.Session() as sess:
             imgs = data['imgs'][:, :, :, 0]
             imgs = imgs.reshape((imgs.shape[0], imgs.shape[1], imgs.shape[2], 1))
             buckets = data['buckets']
-
             img_batches = minibatch(imgs, 32, 1000)
             label_batches = minibatch(buckets, 32, 1000)
             # print("Processing training batch {0}".format(i))
             for images, labels in zip(img_batches, label_batches):
                 sess.run(optimizer, feed_dict={x: images, y: labels, keep_prob: dropout})
             # print("Processed training batch {0}".format(i))
-        
+        avg_loss = 0
+        avg_acc = 0
+        nums = 0        
         for j in range(110, 126):
             data = np.load('/home/data2/vision6/ethpete/gaze_data/batch_{0}.npz'.format(j))
 
@@ -140,17 +142,24 @@ with tf.Session() as sess:
             assert not np.any(np.isnan(imgs))
             img_batches = minibatch(imgs, 32, 1000)
             label_batches = minibatch(buckets, 32, 1000)
-            print(buckets)
+
+            avg_acc = 0
+            nums = 0
             for images, labels in zip(img_batches, label_batches):
 
                 # Calculate batch loss and accuracy
                 loss, acc = sess.run([cost, accuracy], feed_dict={x: images,
                                                   y: labels,
                                                   keep_prob: 1.})
-                print("Epoch " + str(epoch) + ", Minibatch Loss= " + \
-                "{:.6f}".format(loss) + ", Training Accuracy= " + \
-                "{:.5f}".format(acc))
+                avg_acc += acc
+                avg_loss += loss
+                nums += 1
+        avg_acc /= nums
+        avg_loss /= nums
+        print("Epoch " + str(epoch) + ", Minibatch Loss= " + \
+                "{:.6f}".format(avg_loss) + ", Training Accuracy= " + \
+                "{:.5f}".format(avg_acc))
 
     # Save model
-    save_path = saver.save(sess, "ram_model.ckpt")
+    save_path = saver.save(sess, "loc_model.ckpt")
     print("Model saved in file: %s" % save_path)

@@ -53,7 +53,7 @@ vid = imageio.get_reader(filename,  'ffmpeg')
 batch = 0
 count = 0
 
-batch_size = 1000
+batch_size = 3
 buckets = np.zeros((batch_size, num_buckets))
 imgs = np.zeros((batch_size, 244, 244, 1))
 gazes = np.zeros((batch_size, 2))
@@ -73,7 +73,6 @@ df = df.reset_index(drop=True)
 df = df.dropna()
 
 # Create figure and axes
-fig,ax = plt.subplots(1)
 
 # Display the image
 

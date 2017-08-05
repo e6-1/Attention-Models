@@ -94,6 +94,7 @@ biases = {
 
 # Construct model
 pred = conv_net(x, weights, biases, keep_prob)
+pred_labels = tf.argmax(pred, 1)
 
 # Define loss and optimizer
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=pred, labels=y))
@@ -106,15 +107,16 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 # Initializing the variables
 init = tf.global_variables_initializer()
 
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.50)
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.65)
 
 saver = tf.train.Saver()
 # Training code
-# with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
-with tf.Session() as sess:
+with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
+# with tf.Session() as sess:
     sess.run(init)
-    # saver.restore(sess, "loc_model.ckpt")
-    # print("Model restored.")
+    saver.restore(sess, "loc_model.ckpt")
+    print("Model restored.")
+    """
     for epoch in xrange(20):
         rand_batches = range(110)
         shuffle(rand_batches)
@@ -159,7 +161,15 @@ with tf.Session() as sess:
         print("Epoch " + str(epoch) + ", Minibatch Loss= " + \
                 "{:.6f}".format(avg_loss) + ", Training Accuracy= " + \
                 "{:.5f}".format(avg_acc))
-
+    """
+    for k in range(1):
+        data = np.load('/home/data2/vision6/ethpete/test_data/batch_{0}.npz'.format(k))
+        
+        imgs = data['imgs']
+        buckets = data['buckets']
+        print(buckets)
+        prediction = sess.run(pred_labels, feed_dict={x: imgs, y: buckets, keep_prob: 1})
+        print(prediction)
     # Save model
     save_path = saver.save(sess, "loc_model.ckpt")
     print("Model saved in file: %s" % save_path)

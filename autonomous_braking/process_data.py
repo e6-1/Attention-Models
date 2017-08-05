@@ -79,6 +79,9 @@ for index in indices:
         # Store images
         imgs[count, :, :, 0] = image[:, midx_lower:midx_upper, 0]
         bucket = get_bucket(num_buckets, x, y, 244, 244)
+        print(bucket, x, y)
+        if bucket is None:
+            print("------------------------({0}, {1}) on index: {2}".format(x, y, index))
         buckets[count, bucket] = 1
         # Store gaze location
         gazes[count] = np.array([x, y])

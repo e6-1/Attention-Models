@@ -107,16 +107,15 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 # Initializing the variables
 init = tf.global_variables_initializer()
 
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.65)
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.8)
 
 saver = tf.train.Saver()
 # Training code
-with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
-# with tf.Session() as sess:
+# with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
+with tf.Session() as sess:
     sess.run(init)
     saver.restore(sess, "loc_model.ckpt")
     print("Model restored.")
-    """
     for epoch in xrange(20):
         rand_batches = range(110)
         shuffle(rand_batches)
@@ -131,6 +130,9 @@ with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
             label_batches = minibatch(buckets, 32, 1000)
             # print("Processing training batch {0}".format(i))
             for images, labels in zip(img_batches, label_batches):
+                for label in labels:
+                    if label.sum() != 1:
+                        print(label, i)
                 sess.run(optimizer, feed_dict={x: images, y: labels, keep_prob: dropout})
             # print("Processed training batch {0}".format(i))
         avg_loss = 0
@@ -170,6 +172,7 @@ with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
         print(buckets)
         prediction = sess.run(pred_labels, feed_dict={x: imgs, y: buckets, keep_prob: 1})
         print(prediction)
+    """
     # Save model
     save_path = saver.save(sess, "loc_model.ckpt")
     print("Model saved in file: %s" % save_path)

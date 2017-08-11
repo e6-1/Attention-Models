@@ -10,6 +10,29 @@ import numpy as np
 
 distributions = tf.contrib.distributions
 
+
+def get_bucket(num_buckets, x, y, width, height):
+    """Get the ``bucket'' that an (x, y) coordinate falls into in an image
+    given the number of buckets and width/height."""
+    num_buckets = int(sqrt(num_buckets))
+    delta_width = width / num_buckets
+    delta_height = height / num_buckets
+    for i in range(num_buckets):
+        if i == (num_buckets - 1):
+            for j in range(num_buckets):
+                if j == (num_buckets - 1):
+                    return num_buckets * j + i
+                if y <= (j + 1) * delta_height:
+                    return num_buckets * j + i
+        if x <= (i + 1) * delta_width:
+            for j in range(num_buckets):
+                if j == (num_buckets - 1):
+                    return num_buckets * j + i
+                if y <= (j + 1) * delta_height:
+                    return (num_buckets * j + i)
+    return -1
+
+
 def get_sub_seq(seq, start, end):
     """Get the sub sequence starting at the start index and ending at the end index."""
     arr = seq[max([0, start]):end]

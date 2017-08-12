@@ -120,21 +120,21 @@ with tf.Session() as sess:
         rand_batches = range(110)
         shuffle(rand_batches)
 
-        # for i in rand_batches:
-        #     data = np.load('/home/data2/vision6/ethpete/gaze_data/batch_{0}.npz'.format(i))
+        for i in rand_batches:
+            data = np.load('/home/data2/vision6/ethpete/gaze_data/batch_{0}.npz'.format(i))
 
-        #     imgs = data['imgs'][:, :, :, 0]
-        #     imgs = imgs.reshape((imgs.shape[0], imgs.shape[1], imgs.shape[2], 1))
-        #     buckets = data['buckets']
-        #     img_batches = minibatch(imgs, 32, 1000)
-        #     label_batches = minibatch(buckets, 32, 1000)
-        #     # print("Processing training batch {0}".format(i))
-        #     for images, labels in zip(img_batches, label_batches):
-        #         for label in labels:
-        #             if label.sum() != 1:
-        #                 print(label, i)
-        #         sess.run(optimizer, feed_dict={x: images, y: labels, keep_prob: dropout})
-        #     # print("Processed training batch {0}".format(i))
+            imgs = data['imgs'][:, :, :, 0]
+            imgs = imgs.reshape((imgs.shape[0], imgs.shape[1], imgs.shape[2], 1))
+            buckets = data['buckets']
+            img_batches = minibatch(imgs, 32, 1000)
+            label_batches = minibatch(buckets, 32, 1000)
+            # print("Processing training batch {0}".format(i))
+            for images, labels in zip(img_batches, label_batches):
+                for label in labels:
+                    if label.sum() != 1:
+                        print(label, i)
+                sess.run(optimizer, feed_dict={x: images, y: labels, keep_prob: dropout})
+            # print("Processed training batch {0}".format(i))
         avg_loss = 0
         avg_acc = 0
         nums = 0        

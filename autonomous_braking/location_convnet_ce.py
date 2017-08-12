@@ -114,8 +114,8 @@ saver = tf.train.Saver()
 # with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
 with tf.Session() as sess:
     sess.run(init)
-    saver.restore(sess, "loc_model.ckpt")
-    print("Model restored.")
+    # saver.restore(sess, "loc_model.ckpt")
+    # print("Model restored.")
     for epoch in xrange(20):
         rand_batches = range(110)
         shuffle(rand_batches)
@@ -172,5 +172,5 @@ with tf.Session() as sess:
         print(prediction)
     """
     # Save model
-    save_path = saver.save(sess, "loc_model.ckpt")
+    save_path = saver.save(sess, "loc_model_ce.ckpt")
     print("Model saved in file: %s" % save_path)

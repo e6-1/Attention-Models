@@ -12,9 +12,14 @@ import matplotlib.animation as animation
 import matplotlib.patches as patches
 from PIL import Image
 
-
+counts = {}
 for index in range(126):
     data = np.load('/home/data2/vision6/ethpete/gaze_data/batch_{0}.npz'.format(index))
     buckets = data['buckets']
-    counts = np.bincount(buckets)
-    print(counts)
+    for bucket in buckets:
+        b = np.argmax(bucket)
+        if b in counts:
+            counts[b] += 1
+        else:
+            counts[b] = 1
+print(counts)

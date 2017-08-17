@@ -64,13 +64,21 @@ midx_upper = midx + width / 2
 # Drop the ones that are outside of the range we're considering
 df = df.drop(df[df['GazeX'] < midx_lower].index)
 df = df.drop(df[df['GazeX'] > midx_upper].index)
+df = df.drop(df[df['GazeY'] < 0].index)
+df = df.drop(df[df['GazeY'] > width].index)
 df = df.reset_index(drop=True)
 df = df.dropna()
+
+min_x = df['GazeX'].min()
+df['GazeX'] = df['GazeX'].apply(lambda x: x - min_x)
+
+avg_x = df['GazeX'].mean()
+avg_y = df['GazeY'].mean()
 
 indices = range(len(df))
 for index in indices:
     frame = df.loc[index, 'Frame']
-    x = df.loc[index, 'GazeX'] - midx_lower
+    x = df.loc[index, 'GazeX']
     y = df.loc[index, 'GazeY']
     image = vid.get_data(frame)
     if image.shape == img_size:
@@ -78,7 +86,7 @@ for index in indices:
 
         # Store images
         imgs[count, :, :, 0] = image[:, midx_lower:midx_upper, 0]
-        bucket = get_bucket(num_buckets, x, y, 244, 244)
+        bucket = get_bucket(num_buckets, x, y, avg_x, avg_y)
         if bucket is None:
             print("------------------------({0}, {1}) on index: {2}".format(x, y, index))
         buckets[count, bucket] = 1
@@ -101,3 +109,4 @@ for index in indices:
             # Reset
             batch += 1
             count = 0
+

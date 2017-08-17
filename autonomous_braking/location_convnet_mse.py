@@ -89,7 +89,7 @@ biases = {
     'bc1': tf.Variable(tf.random_normal([32])),
     'bc2': tf.Variable(tf.random_normal([64])),
     'bd1': tf.Variable(tf.random_normal([1024])),
-    'out': tf.Variable(tf.random_normal([n_classes]))
+    'out': tf.Variable(tf.random_normal([num_coordinates]))
 }
 
 # Construct model
@@ -136,7 +136,7 @@ with tf.Session() as sess:
             gazes = data['gazes']
             assert not np.any(np.isnan(imgs))
             img_batches = minibatch(imgs, 32, 1000)
-            label_batches = minibatch(buckets, 32, 1000)
+            label_batches = minibatch(gazes, 32, 1000)
 
             for images, labels in zip(img_batches, label_batches):
 

@@ -159,7 +159,7 @@ with tf.Session() as sess:
         avg_acc /= nums
         avg_loss /= nums
         print("Epoch " + str(epoch) + ", Minibatch Loss= " + \
-                "{:.6f}".format(avg_loss) + ", Training Accuracy= " + \
+                "{:.6f}".format(avg_loss) + ", Testing Accuracy= " + \
                 "{:.5f}".format(avg_acc))
     """
     for k in range(1):

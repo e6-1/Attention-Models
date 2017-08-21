@@ -13,7 +13,7 @@ import matplotlib.patches as patches
 from PIL import Image
 
 counts = {}
-for index in range(126):
+for index in range(120, 126):
     data = np.load('/home/data2/vision6/ethpete/gaze_data/batch_{0}.npz'.format(index))
     buckets = data['buckets']
     for bucket in buckets:

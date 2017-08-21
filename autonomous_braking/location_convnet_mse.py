@@ -12,7 +12,7 @@ from __future__ import print_function
 import numpy as np
 from random import shuffle
 import tensorflow as tf
-from utils import minibatch
+from utils import minibatch, get_bucket
 
 # Parameters
 learning_rate = 0.0001
@@ -141,9 +141,10 @@ with tf.Session() as sess:
             for images, labels in zip(img_batches, label_batches):
 
                 # Calculate batch loss and accuracy
-                loss, acc = sess.run([cost, accuracy], feed_dict={x: images,
+                loss, locs = sess.run([cost, locs], feed_dict={x: images,
                                                   y: labels,
                                                   keep_prob: 1.})
+                acc = np.sum(np.array([get_bucket(4, expected[0], expected[1], 244, 244) == get_bucket(4, actual[0], actual[1], 244, 244) for expected, actual in zip(labels, locs)])) / len(locs)
                 avg_acc += acc
                 avg_loss += loss
                 nums += 1

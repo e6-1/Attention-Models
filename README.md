@@ -1,7 +1,2 @@
-# RAM
-
-Modified from https://github.com/jlindsey15/RAM
-
-Implementation of "Recurrent Models of Visual Attention" V. Mnih et al.
-
-Run by `python ram.py` and it can reproduce the result on Table 1 (a) 28x28 MNIST
+# Welcome
+Over the summer of 2017, I worked at the Computer Vision Lab at Indiana University supervied by Dr. David Crandall. There, I researched methods to use [distillation](https://arxiv.org/abs/1503.02531) in training [attention models](https://arxiv.org/abs/1406.6247).
